@@ -1,0 +1,110 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+(**************************************************************************
+ *
+ *	A simple minded example of Dynamic SQL.
+ *	The query to be executed is simply from a string constant, in a
+ *	real application the query string would be developed through
+ *	interaction of some sort with the user.
+ *
+ **************************************************************************)
+
+
+program dsql (INPUT, OUTPUT);
+
+
+    EXEC SQL
+        INCLUDE SQLCA
+var
+(*  Set up the query statement *)
+    query: array[1..61] of CHAR := 'SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = "NY"';
+
+(*  Declare variables to receive data. Note: if it is not known before hand
+ *  the nature of the fields to be retrieved, it would be necessary to allocate
+ *  buffer space for the fields at run time, rather than using predeclared
+ *  fields. *)
+
+    city: array [1..25] of CHAR;
+    state: array [1..4] of CHAR;
+    population: integer32;
+    flag1, flag2, flag3: integer16;
+
+(*  Declare the SQLDA *)
+    sqlda1	: sqlda;
+
+label
+    999;
+
+begin
+
+    EXEC SQL
+	WHENEVER SQLERROR GO TO 999
+
+(*  Set length of SQLDA *)
+    sqlda1.sqln := 100;
+
+(*  Prepare the query *)
+    EXEC SQL
+        PREPARE Q INTO sqlda1 FROM :query;
+
+(*  Set up SQLDA to point to declared fields and force
+    character fields to the datatype SQL_TEXT, the InterBase
+    varying type does not map correctly to the Apollo Pascal
+    varying type.  The notation <datatype> + 1 shows that
+    the fields has an indicator variable. 
+*)
+
+    sqlda1.sqlvars[1].sqldata := addr(city);
+    sqlda1.sqlvars[1].sqlind := addr(flag1);
+    sqlda1.sqlvars[1].sqltype := SQL_TEXT + 1;
+
+    sqlda1.sqlvars[2].sqldata := addr(state);
+    sqlda1.sqlvars[2].sqlind := addr(flag2);
+    sqlda1.sqlvars[2].sqltype := SQL_TEXT + 1;
+
+    sqlda1.sqlvars[3].sqldata := addr(population);
+    sqlda1.sqlvars[3].sqlind := addr(flag3);
+
+    EXEC SQL
+        DECLARE C CURSOR FOR Q;
+
+    EXEC SQL
+        OPEN C;
+
+(*  Fetch and print out records *)
+    EXEC SQL
+        FETCH C USING DESCRIPTOR sqlda1;
+    while (SQLCODE = 0) do
+        begin
+        writeln (city, state, population);
+        EXEC SQL
+            FETCH C USING DESCRIPTOR sqlda1;
+        end;
+
+    EXEC SQL
+	COMMIT RELEASE;
+
+    return;
+
+999: writeln ('Data base error, SQLCODE = ', SQLCODE);
+     gds__print_status (gds__status);
+
+end.

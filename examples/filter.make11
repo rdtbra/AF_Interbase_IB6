@@ -1,0 +1,104 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.filter	Build C-language example of creating, defining, and calling filters
+#		designed for SGI shared libraries
+#
+#  To build the blob filter example:
+#	make -f make.filter new
+#	make -f make.filter filterlib
+#	make -f make.filter 
+#
+#  To run the blob_filter example:
+#	1. Run slides
+#	2. Run qli
+#	   a. ready slides.gdb
+#	   b. list rdb$filters 
+# 	   c. use print statements to run them
+#
+
+.SUFFIXES: .o .c .e .gdb .gdl
+.gdl.gdb:
+	$(GDEF)	$<
+.e.c:
+	$(GPRE) -e -n $<
+.c.o:
+	cc -c -O -DSHLIB_DEFS $<
+
+# definitions
+#
+CFLAGS=		-g
+IBEXE=		$(INTERBASE)/bin
+INTERBASE=	/usr/interbase
+#
+GBAK=		$(IBEXE)/gbak -z
+GDEF=		$(IBEXE)/gdef -z
+GPRE=		$(IBEXE)/gpre -z
+
+slides :	slides.o 
+		cc -g slides.o -lgds_s -lgdsf_s -o slides
+		@echo "To run the slides type: slides "
+
+new :
+		cp $(INTERBASE)/examples/v3/shrfilter.c .
+		cp $(INTERBASE)/examples/v3/filter.bind .
+		cp $(INTERBASE)/examples/v3/filter_func.c functions.c
+		cp $(INTERBASE)/examples/v3/nr_filter.c .
+		cp $(INTERBASE)/examples/v3/slides.gdl .
+		cp $(INTERBASE)/examples/v3/slides.e .
+		chmod 666 *.c *.e *.gdl 
+		$(GBAK) -r $(INTERBASE)/examples/v3/slides.gbak slides.gdb
+
+filterlib :	filterlib.flag
+
+filterlib.flag :	nr_filter.o functions.o shrfilter.o filter.bind
+		mkshlib -s filter.bind -h gdsf_s.a -t gdsf_s -q
+		echo "shared filter library created" > filterlib.flag
+		@echo "#! /bin/sh" >filterlib.com
+		@echo "CURDIR=`pwd`" >>filterlib.com
+		@echo 'echo "Now you must modify the /usr/lib/libgdsf_s link to point"' >>filterlib.com
+		@echo 'echo "to $$CURDIR/gdsf_s and modify the /usr/lib/libgdsf_s.a link"' >>filterlib.com
+		@echo 'echo "to point to $$CURDIR/gdsf_s.a.  When you have done this,"' >>filterlib.com
+		@echo 'echo "type make -f make.filter"' >>filterlib.com
+		@chmod 777 filterlib.com
+		@sh ./filterlib.com
+		@rm filterlib.com
+
+nr_filter.o :	nr_filter.c
+
+slides.c :	slides.gdb filterlib.flag slides.e
+
+functions.o :	functions.c
+slides.o :	slides.c
+	cc -c $(CFLAGS) $<
+shrfilter.o :	shrfilter.c
+
+functions.c slides.gdl slides.e shrfilter.c filter.bind slides.gdb :
+		@echo "    TYPE: make -f make.filter new "
+		@echo "    to copy necessary files from $(INTERBASE)/examples"
+
+qli :
+	cc /usr/interbase/lib/qlilib.a -lgds_s -lgdsf_s -o qli
+
+gbak :
+	cc /usr/interbase/lib/gbaklib.a -lgds_s -lgdsf_s -o gbak
+
+gds_inet_srvr :
+	cc /usr/interbase/lib/gds_inet_svr.a -lgds_s -lgdsf_s -o gds_inet_srvr
+
+clean :	
+		rm -f slides* nr_filter.* filter* functions.*
+		rm -f gdsf_s* shrfilter.* *.bind

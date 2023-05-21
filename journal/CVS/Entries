@@ -1,0 +1,19 @@
+/archive.c/1.3.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/conso_proto.h/1.2.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/console.c/1.3.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/depends.mak/1.2.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/gjrn.c/1.3.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/gjrn_proto.h/1.2.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/journal.gdl/1.2.2.2/Mon Jul 24 18:52:47 2000//TIB60_RELEASE
+/journal.h/1.2.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/journal_vms.e/1.2.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/journal_vms.gdl/1.2.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/misc.c/1.3.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/misc_proto.h/1.2.2.2/Mon Jul 24 18:52:49 2000//TIB60_RELEASE
+/oldr.c/1.3.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/oldr_proto.h/1.2.2.2/Mon Jul 24 18:52:49 2000//TIB60_RELEASE
+/rebui_proto.h/1.2.2.2/Mon Jul 24 18:52:49 2000//TIB60_RELEASE
+/rebuild.e/1.2.2.2/Mon Jul 24 18:52:48 2000//TIB60_RELEASE
+/serve_proto.h/1.2.2.2/Mon Jul 24 18:52:49 2000//TIB60_RELEASE
+/server.e/1.2.2.2/Mon Jul 24 18:52:49 2000//TIB60_RELEASE
+D

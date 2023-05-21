@@ -1,0 +1,150 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+
+GPRE=		source/interbase/bin/gpre$(EXEC_EXT)
+GPRE_FLAGS=	-r -m -z -n
+
+NODE_LINK=
+DSC_LINK=	source/jrd/dsc.o
+JRD_LINK=	$(NODE_LINK) $(DSC_LINK)
+
+BOOT=		source/jrd/gds_boot.a
+
+GPRE_OBJECTS=	cmd.o cme.o cmp.o c_cxx.o exp.o gpre.o hsh.o int.o \
+		jrdmet.o movg.o met.o msc.o par.o pat.o pretty.o sqe.o sql.o \
+		$(LANG_OBJECTS)
+
+all:	gpre$(EXEC_EXT)
+
+gpre:		gprelib.a $(JRD_LINK) $(GDSSHR)
+	-$(RM) gpre
+	$(CC) $(LINK_OPTS) $(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS) \
+		$(T_SWITCH) $(NODE_LINK) $(T_SWITCH) $(DSC_LINK) \
+		-o gpre $(GDSSHR_LINK) $(CURSES_LIB)
+	$(CHMOD_7) gpre
+	$(MV) gpre $(GPRE)
+	$(TOUCH) gpre
+	$(CHMOD_6) gpre
+
+gpre.exe:	gprelib.lib $(JRD_LINK)
+	-$(RM) gpre.exe
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)gpre \
+		$(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS) $(JRD_LINK) $(GDSSHR_LINK)
+	$(MV) gpre.exe $(GPRE)
+	$(RM) gpre.exe
+	$(TOUCH) gpre.exe
+
+gprelib.a:	$(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS)
+	-$(RM) gprelib.a
+	$(AR) gprelib.a $(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS)
+	-ranlib gprelib.a
+	$(CHMOD_6) gprelib.a
+
+gprelib.lib:	$(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS)
+	-$(RM) gprelib.lib
+	$(IMPLIB) -out:gprelib.lib $(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS)
+	$(TOUCH) gprelib.lib
+
+gpre_boot:	$(GPRE_OBJECTS) no_form.o $(JRD_LINK) $(BOOT)
+	$(CC) $(LINK_OPTS) $(GPRE_OBJECTS) noform.o $(JRD_LINK) -o gpre $(BOOT)
+	$(MV) gpre $(GPRE)
+
+debug:		$(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS) $(GDSLIB)
+	$(CC) $(LINK_OPTS) -g $(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS) -o gpre_dbg $(GDSLIB_LINK)
+
+debug_nt:	$(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS)
+	$(CC) $(DEBUG_LINK_OPTS) $(O_EXE_SWITCH)gpre_dbg $(GPRE_OBJECTS) $(FORM_OBJECTS) $(FORM_TRN_OBJECTS) $(GDSLIB_LINK)
+
+ada.o:		ada.c gpre.h form.h pat.h gpre_proto.h prett_proto.h \
+		source/jrd/gds_proto.h
+bas.o:		bas.c gpre.h form.h pat.h
+blrtable.o:	blrtable.c
+cmd.o:		cmd.c gpre.h source/jrd/flags.h
+cme.o:		cme.c gpre.h source/jrd/intl.h
+cmp.o:		cmp.c gpre.h form.h
+cob.o:		cob.c gpre.h form.h pat.h
+cxx.o:		cxx.c gpre.h form.h pat.h
+c_cxx.o:	c_cxx.c gpre.h form.h pat.h
+dyntable.o:	dyntable.c
+exp.o:		exp.c gpre.h parse.h form.h
+	$(SPECIAL_OPT) $(COPT_GPRE_EXP) \
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) exp.c
+form.o:		form.c gpre.h form.h source/pyxis/phase1.h
+form_trn.o:	form_trn.c source/jrd/dsc.h
+ftn.o:		ftn.c gpre.h form.h pat.h
+gen.o:		gen.c gpre.h form.h pat.h
+gpre.h:		source/jrd/dsc.h
+	$(TOUCH) gpre.h
+gpre.o:		gpre.c gpre.h source/jrd/license.h parse.h source/jrd/intl.h
+hsh.o:		hsh.c gpre.h parse.h hsh.h
+int.o:		int.c gpre.h
+jrdmet.o:	jrdmet.c gpre.h source/jrd/val.h source/jrd/names.h \
+		source/jrd/fields.h source/jrd/relations.h source/jrd/types.h \
+		source/intl/charsets.h source/intl/country_codes.h \
+		source/jrd/constants.h
+met.c:		met.e
+met.o:		met.c gpre.h source/jrd/license.h parse.h source/jrd/intl.h
+movg.o:		movg.c 
+msc.o:		msc.c gpre.h parse.h
+no_ada.o:	no_ada.c gpre.h form.h
+no_form.o:	no_form.c gpre.h form.h source/pyxis/phase1.h
+par.o:		par.c gpre.h parse.h form.h
+parse.h:	words.h
+	$(TOUCH) parse.h
+pas.o:		pas.c gpre.h form.h pat.h
+pat.o:		pat.c gpre.h form.h pat.h
+pli.o:		pli.c gpre.h form.h pat.h
+pretty.o:	pretty.c dyntable.h cdbtable.h sdltable.h
+sqe.o:		sqe.c gpre.h parse.h
+sql.o:		sql.c gpre.h parse.h source/jrd/intl.h source/wal/wal.h \
+		source/jrd/flags.h
+vms_print.o:	vms_print.c gpre.h
+
+$(GDSSHR) $(GDSLIB) $(JRD_LINK):
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+$(BOOT):
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+
+# This entry is used to programatically update the include file dependencies 
+# for all *.c files in the current directory.
+#
+# Note that it is specific to Solaris by using the -xM1 compiler option.
+# This option has CC generate dependency lines for the makefile - but
+# does not generate object files.
+# It is likely that a similar option exists on other platforms.
+#
+# It is recommended that depends.mak be created on a platform
+# that supports such an option.  depends.mak is not platform dependent, it uses
+# the standard makefile output format, as can be copied to platforms
+# that don't have a -xM1 feature in the c compiler.
+#
+depends.mak:
+	-$(RM) depends.out
+	-$(CC) $(CFLAGS) -xM1 *.c 1>&2 > depends.out
+	-$(RM) depends.mak
+	$(ECHO) "# depends.mak - gpre"                           > depends.mak
+	$(ECHO) "# Created by 'make depends.mak'"               >> depends.mak
+	date "+# Created on %Y-%m-%d"                           >> depends.mak
+	sed -e "s:source/[a-z/]*/source:source:g" -e "s:source/gpre/::g"\
+		depends.out |sort|uniq >> depends.mak
+	-$(RM) depends.out
+
+# In the event that a platform does not support the make directive "include" - 
+# concatenate "depends.mak" with the makefile.
+#
+include depends.mak
+

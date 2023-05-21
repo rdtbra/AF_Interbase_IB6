@@ -1,0 +1,142 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+# cs_makefile - a makefile for the Character Set example
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c :
+	gpre -z -e -n $<
+.c.o :
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the example:
+#	make -f make.cs new
+#	make -f make.cs demo
+#
+#  To explore the example:
+#	1. setenv GDS_SERVER /(absolute path of this dir)/gds_pipe
+#	2. Run qli
+#	   a. ready cs_demo.gdb
+#	   b. list rdb$functions 
+# 	   c. use print statements to run them
+#	   d. list unix_clients
+#	   e. store into unix_products
+#
+#  DON'T FORGET TO:
+#  setenv GDS_SERVER ./gds_pipe
+#  BEFORE USING THIS EXAMPLE!
+#
+# The Character Set conversion functions are defined as InterBase
+# User Defined Functions (UDF's).  If wish, they may be installed
+# in your system UDF library by following the procedure to install
+# UDF's in your product documentation.
+#
+FUNCOBJS=	cs_convert.o 
+FUNCLIB=	convert.o
+INTERBASE=	/usr/interbase
+GDEF=		$(INTERBASE)/bin/gdef
+QLI=		$(INTERBASE)/bin/qli
+JRDLIB=         gds_b.a -ldnet
+EXAMPLES=	$(INTERBASE)/intl
+#  
+#
+CFLAGS = -g
+
+todo:	
+	@echo "First do make -f make.cs new" > todo
+	@echo "Then  do make -f make.cs demo" >> todo
+	@echo "Then     setenv GDS_SERVER ./gds_pipe" >> todo
+	@echo "Then explore the example with QLI." >> todo
+	@cat todo
+
+demo:	cs_demo.gdb
+	@echo "    REMEMBER TO: " 
+	@echo "    setenv GDS_SERVER ./gds_pipe " 
+	@echo "    BEFORE RUNNING QLI ON cs_demo.gdb! " 
+
+cs_demo.gdb:	demo.flag
+	rm tmp.com
+
+demo.flag : gds_pipe cs_demo.gdl cs_load.gdl cs_load.qli
+	sed -e s:CONVERT_MODULE:$(FUNCLIB):g cs_demo.gdl > tmp.gdl
+	echo "#! /bin/csh; " > tmp.com 
+	echo "setenv GDS_SERVER ./gds_pipe; " >> tmp.com 
+	echo "$(GDEF) tmp.gdl; " >> tmp.com
+	echo "$(GDEF) cs_load.gdl; " >> tmp.com
+	echo "$(QLI)  -a cs_load.qli; " >> tmp.com
+	echo "unsetenv GDS_SERVER; " >> tmp.com 
+	chmod 777 tmp.com
+	/bin/csh < tmp.com
+	rm tmp.gdl
+	echo "gdef'd cs_demo.gdl" > demo.flag
+
+gds_pipe :	gds_b.a 
+	cc -g $(INTERBASE)/lib/gds_pipe.a $(JRDLIB) -lm -o gds_pipe
+
+gds_inet_server : gds_b.a 
+	cc -g $(INTERBASE)/lib/gds_inet_server.a $(JRDLIB) -lm -o gds_inet_server
+
+gds_dnet_server : gds_b.a 
+	cc -g $(INTERBASE)/lib/gds_dnet_server.a $(JRDLIB) -lm -o gds_dnet_server
+
+gds_b.a :	convert.o functions.o
+	ar rls gds_b.a functions.o convert.o
+
+convert.o : 	$(FUNCOBJS) 
+	ld -r $(FUNCOBJS) -o convert.o
+
+cs_convert.o:	cs_convert.c 437_to_865.h 437_to_lat1.h 865_to_lat1.h
+	cc $(CFLAGS) -c cs_convert.c
+
+functions.o :	functions.c
+
+new :		
+	cp $(INTERBASE)/lib/gds_b.a .
+	cp $(EXAMPLES)/cs_funct.c ./functions.c
+	cp $(EXAMPLES)/cs_convert.c .
+	cp $(EXAMPLES)/437_to_865.h .
+	cp $(EXAMPLES)/437_to_lat1.h .
+	cp $(EXAMPLES)/865_to_lat1.h .
+	cp $(EXAMPLES)/products.lat1 .
+	cp $(EXAMPLES)/users.lat1 .
+	cp $(EXAMPLES)/clients.437 .
+	cp $(EXAMPLES)/contacts.437 .
+	cp $(EXAMPLES)/cs_load.gdl .
+	cp $(EXAMPLES)/cs_demo.gdl .
+	cp $(EXAMPLES)/cs_load.qli .
+	chmod 666 *.c *.gdl *.h *.437 *.lat1 *.qli gds_b.a
+
+clean:
+	-rm todo
+	-rm cs_convert.c
+	-rm 437_to_865.h 
+	-rm 437_to_lat1.h 
+	-rm 865_to_lat1.h 
+	-rm cs_demo.gdl cs_demo.gdb
+	-rm cs_load.gdl cs_load.gdb cs_load.qli
+	-rm users.lat1 products.lat1
+	-rm clients.437 contacts.437
+	-rm $(FUNCLIB)
+	-rm $(FUNCOBJS)
+	-rm -f functions.* 
+	-rm -f demo.flag
+	-rm -f gds_pipe
+	-rm -f gds_*net_server 
+	-rm -f gds_b.a 
+

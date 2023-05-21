@@ -1,0 +1,59 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- GBAK MAKEFILE ---------------------------------
+#       This makefile builds the backup and restore objects.
+#       
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=    backup.c restore.c
+
+BURP_FILES=     backup.c burp.c canonical.c misc.c mvol.c restore.c
+
+BURP_OBJS=      $(BURP_FILES:.c=.obj)
+
+JRD_MISC=       $(ROOT)\jrd\$(.path.obj)\sdl.obj
+
+REMOTE_MISC=    $(ROOT)\remote\$(.path.obj)\xdr.obj
+
+SPIT_FILES=	spit.c
+
+SPIT_OBJS=	$(SPIT_FILES:.c=.obj)
+#-----------------------------------------------------------------------------
+
+burp.rsp:	$(BURP_OBJS)
+	-$(RM) $(.path.obj)\burp.rsp
+	&echo $(ROOT)\burp\$** $(RSP_CONTINUE) >> $(.path.obj)\burp.rsp
+
+burp.exe:       $(BURP_OBJS) $(JRD_MISC) $(REMOTE_MISC)
+	-$(RM) burp.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\burp
+$(SHRLIB_LINK) $(CONLIBSDLL) $(WSOCKLIB) USER32.LIB $(VER_RES_LINK)
+!
+	$(TOUCH) burp.exe
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif

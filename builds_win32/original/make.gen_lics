@@ -1,0 +1,41 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#---------------------------- GEN_LICS MAKEFILE ---------------------------------
+#   This makefile builds the gen_lics objects needed for the license generator 
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GEN_LICS_FILES=    gen_lics.c 
+
+GEN_LICS_OBJS=      $(GEN_LICS_FILES:.c=.obj)
+
+JRD_MISC=       $(ROOT)\jrd\$(.path.obj)\node.obj
+
+#-----------------------------------------------------------------------------
+
+gen_lics.exe:       $(GEN_LICS_OBJS) $(JRD_MISC)
+	-$(RM) $(.path.obj)\gen_lics.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS)
+$(O_EXE_SWITCH)$(.path.obj)\gen_lics
+$(GDSSHR_LINK) USER32.LIB /link $(ROOT)\jrd\$(.path.obj)\$(VERSION_RES)
+!
+	$(TOUCH) $(.path.obj)\gen_lics.exe
+

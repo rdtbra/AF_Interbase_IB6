@@ -1,0 +1,99 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program employee_roster (input, output);
+
+database db = filename 'emp.gdb';
+
+type 
+	empno_type = based on employees.empno;
+	first_name_type = based on employees.first_name;
+	last_name_type = based on employees.last_name;
+	name_type = packed array [1..40] of char;
+var 
+	blanks	: packed array [1..40] of char := 
+			'                                        ';
+	out_str	: name_type;
+
+
+procedure trunc (str1 : first_name_type;
+		str2 : last_name_type);
+var
+	i, j	: integer;
+
+begin
+	i := 1;
+	j := 1;
+	while (str1[i] <> ' ') and (i <= length (str1)) do
+	begin
+		out_str[j] := str1[i];
+		i := i + 1;
+		j := j + 1;
+	end;
+	out_str[j] := ' ';
+	j := j + 1;
+	i := 1;
+	while (str2[i] <> ' ') and (i <= length (str2)) do
+	begin
+		out_str[j] := str2[i];
+		i := i + 1;
+		j := j + 1;
+	end;
+        while j <= length (out_str) do
+	begin
+		out_str [j] := ' ';
+		j := j + 1;
+	end;
+end;  { procedure trunc }
+
+
+procedure   print_next (level : integer; super : empno_type);
+var
+	offset	:	integer;
+
+begin
+
+	for (level level) e in employees with e.super = super
+		offset := (level * 4);
+		trunc (e.first_name, e.last_name);
+		writeln (blanks : offset,
+			'....', out_str);
+		print_next (level + 1, e.empno); 
+	end_for;
+
+end;	{ procedure print_next }
+
+
+
+
+begin
+	ready;
+	start_transaction;
+	writeln ('		Employee Roster');
+	writeln;
+	for e in employees with e.super missing
+		trunc (e.first_name, e.last_name);
+		writeln (out_str);
+		print_next (0, e.empno);
+	end_for;
+	commit;
+	finish;
+end.
+    

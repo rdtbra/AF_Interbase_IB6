@@ -1,0 +1,95 @@
+DSQL:	PROCEDURE OPTIONS (MAIN);
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+
+    EXEC SQL
+        INCLUDE SQLCA
+
+    DECLARE CITY CHARACTER(25) VARYING;
+    DECLARE STATE CHARACTER(4) VARYING;
+    DECLARE POPULATION FIXED BINARY (31);
+    DECLARE (FLAG1, FLAG2, FLAG3) FIXED BINARY (15);
+    DECLARE QUERY CHARACTER(61) INITIAL 
+         ('SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = "NY"');
+
+    DECLARE 1 SQLDA1,
+      2 SQLAID CHAR(8),
+      2 SQLDABC BIN FIXED(31),
+      2 SQLN BIN FIXED(15),
+      2 SQLD BIN FIXED(15),
+      2 SQLVAR (3),
+        3 SQLTYPE BIN FIXED(15),
+        3 SQLLEN BIN FIXED(15),
+        3 SQLDATA PTR,
+        3 SQLIND PTR,
+        3 SQLNAME CHAR(30) VAR; 
+
+    SQLDA1.SQLAID = 'SQLDA   ';
+    SQLDA1.SQLN = 3;
+
+
+    EXEC SQL
+	WHENEVER SQLERROR GO TO ERR;
+
+    EXEC SQL
+        PREPARE Q INTO sqlda1 FROM :query;
+
+/*
+    associate the pointers in the SQLDA with the 
+    program variables that will receive their values.
+    Since PL/I supports varying strings, ask for all
+    text fields as SQL_VARYING.  Note that the
+    form <datatype> + 1 shows that the field has an
+    indicator variable.
+*/
+
+    sqlda1.sqlvar(1).sqldata = ADDR(city);
+    sqlda1.sqlvar(1).sqlind = ADDR(flag1);
+    sqlda1.sqlvar(1).sqltype = SQL_VARYING + 1;
+
+    sqlda1.sqlvar(2).sqldata = ADDR(state);
+    sqlda1.sqlvar(2).sqlind = ADDR(flag2);
+    sqlda1.sqlvar(2).sqltype = SQL_VARYING + 1;
+
+    sqlda1.sqlvar(3).sqldata = ADDR(population);
+    sqlda1.sqlvar(3).sqlind = ADDR(flag3);
+
+    EXEC SQL
+        DECLARE C CURSOR FOR Q;
+
+    EXEC SQL
+        OPEN C;
+
+    EXEC SQL
+        FETCH C USING DESCRIPTOR sqlda1;
+    DO WHILE (SQLCODE = 0);
+        PUT LIST (CITY, STATE, POPULATION) SKIP;
+        EXEC SQL
+            FETCH C USING DESCRIPTOR sqlda1;
+        END;
+
+    EXEC SQL
+	COMMIT RELEASE;
+
+    RETURN;
+
+ERR: PUT LIST ('Data base error, SQLCODE = ', SQLCODE) SKIP;
+       CALL gds__print_status (gds__status);
+
+    END;

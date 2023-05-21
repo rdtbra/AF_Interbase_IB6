@@ -1,0 +1,129 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# udf_c.mkf4	Build C-language example of creating, defining, and calling UDF
+# designed specifically for DGUX/5.4 with shareable object libraries
+#
+# To test functions using the shareable object libraries:
+#	make gdsf.so
+#       make udftest
+# With a properly set up shareable object library and LD_LIBRARY_PATH
+# you will be able to test functions through qli and other interbase
+# utilities as well as the udftest application.
+#
+
+.SUFFIXES : .o .c .e
+
+.e.c :
+	$(GPRE) -z -e -n $<
+.c.o :
+	$(CC) $(CFLAGS) -K PIC $<
+
+# DG definitions
+
+CFLAGS=	-w -g -c
+INTERBASE= /usr/interbase
+IBEXE=	$(INTERBASE)/bin
+LINK=	cc
+OPTGDS=	-lgds -lgdsf
+OPTBIN=	-o
+
+# common definitions
+
+GDSLIB=	$(INTERBASE)/lib/gds.so
+GBAK=	$(IBEXE)/gbak -z
+GCON=	$(IBEXE)/gcon -z
+GFIX=	$(IBEXE)/gfix -z
+GDEF=	$(IBEXE)/gdef -z
+GPRE=	$(IBEXE)/gpre -z
+GRST=	$(IBEXE)/grst -z
+QLI=	$(IBEXE)/qli -z
+
+#	Build special gdsf that includes the udf.
+
+gdsf.so: udf.o atlas.gdb functions.o
+	ld -G -o gdsf.so functions.o udf.o -z defs -lm -lc
+#
+#	To test shareable objects use ln to define links to gds and gdsf.
+#	gds.so needs to include the gdsf.so found in the same directory
+#	so we define the current directory as the first place to look.
+#
+	-@ln -s $(GDSLIB) libgds.so
+	-@ln -s gdsf.so libgdsf.so
+	-@echo   
+	-@echo use setenv to define LD_LIBRARY_PATH to use local libraries
+	-@echo type: 		setenv LD_LIBRARY_PATH .
+	-@echo to make the right libraries available before you build udftest
+	-@echo
+	-@echo You can also make udf_triggers if you want to look at how
+	-@echo user defined functions work in triggers.
+	-@echo   
+
+udf_triggers: udf_trig.gdl
+	$(GDEF)	udf_trig.gdl
+
+#	Build the database against which to build the udf test.
+
+atlas.gdb : $(INTERBASE)/examples/v3/atlas.gbak udf.gdl udf_trig.gdl
+	$(GBAK)	-r $(INTERBASE)/examples/v3/atlas.gbak atlas.gdb
+	$(GDEF)	udf.gdl
+
+
+#	Build the program to test the udf.
+#	Requires the specially-built gdsf that includes the udf.
+
+udftest: udftest.o 
+	$(LINK) udftest.o $(OPTGDS) $(OPTBIN) $@
+
+#	The following rules get all the basic ingredients (except
+#	the makefile itself) from the InterBase examples directory.
+
+functions.c: $(INTERBASE)/examples/v3/functions.c
+	cp	$(INTERBASE)/examples/v3/functions.c functions.c
+	chmod	666 functions.c
+
+udf.c: 	$(INTERBASE)/examples/v3/udf.c
+	cp	$(INTERBASE)/examples/v3/udf.c udf.c
+	chmod	666 udf.c
+
+udf.gdl: $(INTERBASE)/examples/v3/udf.gdl
+	cp	$(INTERBASE)/examples/v3/udf.gdl udf.gdl
+	chmod	666 udf.gdl
+
+udf_trig.gdl: 	$(INTERBASE)/examples/v3/udf_trig.gdl
+	cp	$(INTERBASE)/examples/v3/udf_trig.gdl udf_trig.gdl
+	chmod	666 udf_trig.gdl
+
+udftest.e: 	$(INTERBASE)/examples/v3/udftest.e
+	cp	$(INTERBASE)/examples/v3/udftest.e udftest.e
+	chmod	666 udftest.e
+
+
+functions.o:	functions.c
+udf.o:		udf.c
+udftest.c:	udftest.e
+udftest.o:	udftest.c
+	cc $(CFLAGS) udftest.c
+
+#	Clean up by deleting all files we created, except basic ingredients.
+
+clean:
+	-@rm	atlas.gdb
+	-@rm 	udf.o  functions.o
+	-@rm	udftest udftest.o udftest.c 
+	-@rm	gdsf.so
+	-@rm 	libgdsf.so
+	-@rm	libgds.so

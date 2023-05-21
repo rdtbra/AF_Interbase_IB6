@@ -1,0 +1,51 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- GPRE MAKEFILE ---------------------------------
+#       This makefile builds the gpre objects needed for GPRE.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+LANG_OJECTS= 
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=    met.c
+
+GPRE_FILES=     cmd.c cme.c cmp.c c_cxx.c exp.c gpre.c hsh.c int.c jrdmet.c \
+		met.c movg.c msc.c noform.c par.c pat.c pretty.c sqe.c sql.c \
+
+JRD_MISC=       $(ROOT)\jrd\$(.path.obj)\dsc.obj
+
+GPRE_OBJS=      $(GPRE_FILES:.c=.obj) $(LANG_OBJECTS)
+
+#-----------------------------------------------------------------------------
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+gpre.exe:       $(GPRE_OBJS) $(JRD_MISC)
+	-$(RM) gpre.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\gpre
+$(SHRLIB_LINK) $(CONLIBSDLL) $(VER_RES_LINK)
+!
+	$(TOUCH) gpre.exe
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif

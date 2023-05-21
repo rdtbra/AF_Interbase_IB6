@@ -1,0 +1,127 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+
+GPRE=		source/interbase/bin/gpre$(EXEC_EXT)
+LOCK_PRINT=	source/interbase/bin/gds_lock_print$(EXEC_EXT)
+MANAGER=	source/interbase/bin/gds_lock_mgr$(EXEC_EXT)
+DROP=		source/interbase/bin/gds_drop$(EXEC_EXT)
+DROP_FLAGS=	-s
+
+JRD_LINK2=	source/jrd/isc.o source/jrd/dls.o source/jrd/isc_ipc.o \
+		source/jrd/isc_sync.o source/jrd/gds.o
+JRD_LINK=	$(JRD_LINK2) $(LOCK_JRD_MISC)
+
+all:		lock lock_print$(EXEC_EXT) lock_driver$(EXEC_EXT)
+
+lock:		lock.o
+	-$(RM) lock_objects 
+	$(TOUCH) lock_objects 
+	$(CHMOD_6) lock_objects 
+
+lock_print:	print.o $(JRD_LINK) $(V3PRINTER)
+	-$(RM) lock_print
+	$(CC) $(LINK_OPTS) print.o $(V3PRINTER) $(JRD_LINK) $(GDSSHR_LINK) \
+		-o lock_print $(SCO_SOCKET_LIB) $(SO_THREAD_LIB) $(NSL_LIB)
+	$(CHMOD_7) lock_print
+	$(MV) lock_print $(LOCK_PRINT)
+	$(TOUCH) lock_print
+	$(CHMOD_6) lock_print
+
+lock_print.exe:	print.o $(JRD_LINK) source/jrd/thd.o
+	-$(RM) lock_print.exe
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)lock_print \
+		print.o $(JRD_LINK) source/jrd/thd.o $(CONLIBSDLL) $(ADVAPILIB)
+	$(MV) lock_print.exe $(LOCK_PRINT)
+	$(RM) lock_print.exe
+	$(TOUCH) lock_print.exe
+
+lock_driver:	driver.o $(JRD_LINK) lock.o
+	-$(RM) lock_driver
+	$(CC) $(LINK_OPTS) driver.o $(JRD_LINK) lock.o $(B_ELF) -o lock_driver
+
+lock_driver.exe: driver.o
+	-$(RM) lock_driver.exe
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)lock_driver \
+		driver.o $(JRD_LINK) lock.o $(CONLIBSDLL) $(ADVAPILIB)
+
+manager:	manager.o lock.o divorce.o $(JRD_LINK2)
+	-$(RM) manager
+	$(CC) $(LINK_OPTS) manager.o lock.o divorce.o $(JRD_LINK2) \
+		-o manager $(NSL_LIB) $(SCO_SOCKET_LIB) $(SO_THREAD_LIB)
+	$(CHMOD_S7) manager
+	$(DROP) $(DROP_FLAGS)
+	$(MV) manager $(MANAGER)
+	$(TOUCH) manager
+	$(CHMOD_6) manager
+
+divorce.c:	source/jrd/divorce.c
+	$(CP) source/jrd/divorce.c divorce.c
+divorce.o:	divorce.c source/jrd/divor_proto.h
+driver.o:	driver.c lock.h source/jrd/isc.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_LOCK) driver.c
+lock.h:		source/jrd/file_params.h
+	$(TOUCH) lock.h
+lock.o:		lock.c lock.h \
+		lock_proto.h \
+		source/jrd/thd.h source/jrd/isc.h \
+		source/jrd/gds_proto.h source/jrd/isc_proto.h \
+		source/jrd/thd_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_LOCK) lock.c
+manager.o:	manager.c  lock_proto.h source/jrd/jrd.h source/jrd/lck.h 
+print.o:	print.c lock.h source/jrd/jrd.h source/jrd/lck.h source/jrd/isc.h \
+		source/jrd/gds_proto.h source/jrd/isc_proto.h \
+		source/jrd/time.h prtv3_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_LOCK) print.c
+printv3.o:	printv3.c lockv3.h prtv3_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_LOCK) printv3.c
+printv3s4.o:	printv3s4.c lockv3s4.h prtv3_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_LOCK) printv3s4.c
+
+lock.bin:	lock.o
+
+$(GDSSHR) $(GDSLIB) $(JRD_LINK):
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+
+# This entry is used to programatically update the include file dependencies 
+# for all *.c files in the current directory.
+#
+# Note that it is specific to Solaris by using the -xM1 compiler option.
+# This option has CC generate dependency lines for the makefile - but
+# does not generate object files.
+# It is likely that a similar option exists on other platforms.
+#
+# It is recommended that depends.mak be created on a platform
+# that supports such an option.  depends.mak is not platform dependent, it uses
+# the standard makefile output format, as can be copied to platforms
+# that don't have a -xM1 feature in the c compiler.
+#
+depends.mak:
+	-$(RM) depends.out
+	-$(CC) $(CFLAGS) -xM1 *.c 1>&2 > depends.out
+	-$(RM) depends.mak
+	$(ECHO) "# depends.mak - lock"                           > depends.mak
+	$(ECHO) "# Created by 'make depends.mak'"               >> depends.mak
+	date "+# Created on %Y-%m-%d"                           >> depends.mak
+	sed -e "s:source/[a-z/]*/source:source:g" -e "s:source/lock/::g"\
+		depends.out |sort|uniq >> depends.mak
+	-$(RM) depends.out
+
+# In the event that a platform does not support the make directive "include" - 
+# concatenate "depends.mak" with the makefile.
+#
+include depends.mak
+

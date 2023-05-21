@@ -1,0 +1,90 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.filter	A makefile for the blob filters example
+#
+#  To build the blob filter example:
+#	make -f make.filter new
+#	make -f make.filter 
+#
+#  To run the blob_filter example:
+#	1. Run slides
+#	2. Run qli
+#	   a. ready slides.gdb
+#	   b. list rdb$filters 
+# 	   c. use print statements to run them
+#
+
+.SUFFIXES: .c .e
+.e.c :
+	$(GPRE) -e -n $<
+.c.o :
+	cc $(CFLAGS) -c $<
+
+#  
+# definitions
+#
+CFLAGS=		-g
+IBEXE=		$(INTERBASE)/bin
+INTERBASE=	 /usr/interbase
+#
+GBAK=		$(IBEXE)/gbak -z
+GDEF=		$(IBEXE)/gdef -z
+GPRE=		$(IBEXE)/gpre -z
+FILTERLIB=	nroff_filter
+
+slides :	slides.o 
+		cc -g slides.o -lgdsshr -o slides
+		@echo "To run the slides type: slides "
+
+new :
+		cp $(INTERBASE)/examples/v3/nr_filter.c .
+		cp $(INTERBASE)/examples/v3/slides.gdl .
+		cp $(INTERBASE)/examples/v3/slides.e .
+		chmod 666 *.c *.e *.gdl 
+		$(GBAK) -r $(INTERBASE)/examples/v3/slides.gbak slides.gdb
+
+filters.flag : slides.gdl filterlib.flag
+		@echo 'modify database "slides.gdb";' > slides_use1.gdl
+		@echo 'delete filter nroff_filter;' >> slides_use1.gdl
+		@echo 'define filter nroff_filter' >> slides_use1.gdl
+		@echo '  input_type -1' >> slides_use1.gdl
+		@echo '  output_type 1' >> slides_use1.gdl
+		@echo '  module_name "FILTERLIB"' >> slides_use1.gdl
+		@echo '  entry_point "nroff_filter";' >> slides_use1.gdl
+		echo "#!/bin/sh" > slides.com
+		echo "CURDIR=`pwd`" >> slides.com
+		echo 'sed "s%FILTERLIB%$$CURDIR/$(FILTERLIB)%" slides_use1.gdl > slides_use2.gdl' >> slides.com
+		echo "$(GDEF) slides_use2.gdl" >> slides.com
+		chmod 777 slides.com
+		./slides.com
+		@rm slides.com
+		@echo "gdef'd slides.gdb" > filters.flag
+
+nr_filter.o :	nr_filter.c
+filterlib.flag :	nr_filter.o
+		cc nr_filter.o -e nroff_filter -o $(FILTERLIB)
+		echo "filter executables built" > filterlib.flag
+
+slides.c :	slides.gdb filters.flag slides.e
+slides.o :	slides.c
+
+slides.gdl slides.e slides.gdb :
+		@echo "    TYPE: make -f make.filter new "
+		@echo "    to copy necessary files from $(INTERBASE)/examples"
+
+clean :	
+		rm -f slides* nr_filter.* filter* nroff_filter

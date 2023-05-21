@@ -1,0 +1,116 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# udf_c.mkf	Build C-language example of creating, defining, and calling blob filters
+
+.SUFFIXES: .o .c .e .gdb .gdl .mkf .mk4
+
+.gdl.gdb: ;	$(GDEF)	$<
+.e.c: ;		$(GPRE) -e -m $<
+.ea.a: ;	$(GPRE) -e -m $<
+.eftn.ftn: ;	$(GPRE) -e -m $<
+.epas.pas: ;	$(GPRE) -e -m $<
+.c.o: ;		$(CC) -w -g -c $<
+.o: ;		$(LINK) $< $(OPTGDS) $(OPTBIN) $@
+
+# Apollo definitions
+#
+CFLAGS=	-dba -nwarn 
+IBEXE=	$(INTERBASE)/com
+INTERBASE=	/interbase
+LINK=	/com/bind -mergebss 
+OPTGDS=	-inlib $(GDSLIB)
+OPTBIN=	-b
+
+# Sun definitions
+#
+#	CFLAGS=	
+#	IBEXE=	$(INTERBASE)/bin
+#	INTERBASE=	/usr/interbase
+#	LINK=	cc
+#	OPTGDS=	-lgds
+#	OPTBIN=	-o
+
+# common definitions
+#
+GDSLIB=	$(INTERBASE)/lib/gdslib
+GBAK=	$(IBEXE)/gbak -z
+GCON=	$(IBEXE)/gcon -z
+GFIX=	$(IBEXE)/gfix -z
+GDEF=	$(IBEXE)/gdef -z
+GPRE=	$(IBEXE)/gpre -z
+GRST=	$(IBEXE)/grst -z
+QLI=	$(IBEXE)/qli -z
+
+##	Build the program to test the udf.
+#	Requires the specially-built gdslib that includes the udf.
+#
+slides:	slides.o
+	$(LINK) slides.o \
+	-inlib	funclib \
+		$(OPTGDS) \
+		$(OPTBIN) $@
+slides.o:	slides.c
+slides.c:	slides.e \
+		slides.gdbf \
+		funclib
+	$(GPRE)	slides.e -e
+
+new :		
+		cp /interbase/examples/v3/slides.e .
+		cp /interbase/examples/v3/nr_filter.c .
+		chmod 666 *.c *.e
+		$(GBAK) -r /interbase/examples/v3/slides.gbak slides.gdb
+		
+#	Build special gdslib that includes the udf.
+#	Requires a virgin copy of gdslib, plus the udf itself.
+#
+funclib:	nr_filter.o \
+		$(INTERBASE)/lib/gdslib
+	$(LINK) nr_filter.o $(OPTBIN) $@ \
+		-mark nroff_filter
+
+#	Build the udf object module for inclusion into special library.
+#
+nr_filter.o:		nr_filter.c
+	cc -W0,-pic -W0,-natural -Tany -c -w nr_filter.c
+
+#	Build the database against which to build the udf test.
+#
+slides.gdb \
+slides.gdbf: \
+		$(INTERBASE)/examples/v3/slides.gbak
+	$(GBAK)	$(INTERBASE)/examples/v3/slides.gbak -r \
+		slides.gdb
+	-cp	/dev/null  slides.gdbf
+
+#	The following rules get all the basic ingredients (except
+#	the makefile itself) from the InterBase examples directory.
+
+nr_filter.c: \
+		$(INTERBASE)/examples/v3/nr_filter.c
+	cp	$(INTERBASE)/examples/v3/nr_filter.c nr_filter.c
+
+slides.e: \
+		$(INTERBASE)/examples/v3/slides.e
+	cp	$(INTERBASE)/examples/v3/slides.e slides.e
+
+#	Clean up by deleting all files we created, except basic ingredients.
+#
+clean:
+	-@rm	slides.gdb slides.gdbf
+	-@rm	slides slides.o slides.c 
+	-@rm	funclib nr_filter.o

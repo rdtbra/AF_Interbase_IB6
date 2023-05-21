@@ -1,0 +1,45 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- UTILITIES MAKEFILE ---------------------------------
+#       This makefile builds the objects needed for gsec, cache_print,
+#       dba (gstat), instsvc, instreg and rebuild (gfix) utilities.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+!include ..\include.mak
+
+GUARD_LINK=	user32.lib gdi32.lib shell32.lib comctl32.lib msvcrt.lib version.lib
+#-----------------------------------------------------------------------------
+
+iscguard.exe:  iscguard.obj iscguard.res iscguard_utils.obj chop.obj cntl_guard.obj
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) /MT $(O_EXE_SWITCH)$(.path.obj)\iscguard
+$(SHRLIB_LINK) $(ADVAPILIB) $(GUARD_LINK) /link /NODEFAULTLIB:libc.lib
+!
+
+iscguard.obj:	iscguard.c
+	$(CC) @&&! 
+-DSERVER_SHUTDOWN $(VERSION_CFLAGS) -c $(O_OBJ_SWITCH)$(.path.obj)\iscguard.obj
+-DWIN32_LEAN_AND_MEAN -DWIN32 -Di386 -DSUPERSERVER iscguard.c
+!
+
+chop.obj: ..\remote\chop.c
+	$(CC) -c @&&!
+	$(CFLAGS)
+	$(VERSION_FLAG) ..\remote\chop.c 
+!
+	$(TOUCH) iscguard.exe

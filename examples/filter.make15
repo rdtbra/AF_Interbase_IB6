@@ -1,0 +1,86 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+# filter_makefile - a makefile for the blob filters example
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c:
+	gpre -z -e -n $<
+.c.o:
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the blob filter example example:
+#	make -f make.filter new
+#	make -f make.filter 
+#
+#  To run the blob_filter example:
+#	1. Run slides
+#	2. Run qli
+#	   a. ready slides.gdb
+#	   b. list rdb$filters 
+# 	   c. use print statements to run them
+#
+#
+#  When you are satisfied with your testing, copy the user defined
+#  shared blob-filter library to /usr/interbase/lib. You will now have
+#  access to the user-defined blob-filter once you have modified the
+#  slides.gdl file to reflect the new location of the user defined
+#  blob-filter library...
+#       1. modify udf.gdl and replace FILTERLIB with the absolute
+#          path and name of the library
+#          e.g. sed "s%FILTERLIB%/usr/interbase/lib/gdsfilt.so%" slides.gdl > slides_my.gdl
+#               cp FILTERLIB /usr/interbase/lib/gdsfilt.so
+#       2. replace slides.gdb with the name of your database in slides_my.gdl
+#       3. gdef -z slides_my.gdl to update your master database
+#  The user-defined blob-filter is now globally defined. Now remote processes
+#  have access to the user-defined blob-filter. NOTE: user-defined blob-filters
+#  are always performed locally.
+#
+#
+CFLAGS=		-O -K PIC
+FILTOBJ=	nr_filter.o
+FUNCGDB=	slides.gdb
+PIPELIB=	-lgds -lnsl -lsocket -ldl
+FILTERLIB=	FILTERLIB
+
+slides:	slides.o slides_find
+	cc -g slides.o $(PIPELIB) -o slides
+
+new:		
+	cp /usr/interbase/examples/v3/nr_filter.c .
+	cp /usr/interbase/examples/v3/slides.gdl .
+	cp /usr/interbase/examples/v3/slides.e .
+	cp /usr/interbase/examples/v3/slides.qli .
+	chmod 666 *.c *.e *.gdl *.qli
+	gbak -r -z /usr/interbase/examples/v3/slides.gbak slides.gdb
+		
+$(FILTERLIB): 	$(FILTOBJ) 
+	ld -G $(FILTOBJ) -o $(FILTERLIB)
+
+slides_find: slides.gdb
+	/usr/interbase/bin/qli < slides.qli > /dev/null
+	touch slides_find
+
+slides.c:	slides.e
+slides.o:	$(FILTERLIB) slides.c
+	cc -g -c slides.c
+nr_filter.o:	nr_filter.c
+
+clean:	
+	rm -f nr_filter.* slides* FILTERLIB

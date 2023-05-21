@@ -1,0 +1,112 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+!include ..\include.mak
+
+#----------------------------------------------------------------------------
+IBLICEN_DLL_FILES= 	licentool.c
+IBLICEN_DLL_OBJS=	$(IBLICEN_DLL_FILES:.c=.obj)
+IBLICEN_FILES=		iblicen.c licentool.c
+IBLICEN_OBJS=		$(IBLICEN_FILES:.c=.obj)
+
+GEN_LICS_FILES=    gen_license.c 
+
+GEN_LICS_OBJS=      $(GEN_LICS_FILES:.c=.obj)
+
+NODE_LINK=       $(ROOT)\jrd\$(.path.obj)\node.obj
+
+!if $(VERSION)==DEV
+JRD_MISC=       $(ROOT)\jrd\$(COMPILER)_obj\bind\iberr.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc.obj \
+		$(NODE_LINK)
+!else
+JRD_MISC=       $(ROOT)\jrd\$(COMPILER)_obj\bin\iberr.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc.obj \
+		$(NODE_LINK)
+!endif
+
+
+#GUI License Tool Definitions
+LIC_VERSION_RC=	$(ROOT)\jrd\$(VERSION_RC)
+FILES=		license_tooldlg.cpp license_tool.cpp stdafx.cpp addDialog.cpp removedialog.cpp
+OBJS=		$(FILES:.cpp=.obj)
+RESOURCE_LINK=	$(.path.res)\licentool.res
+LINK_FLAGS=	/link /subsystem:windows /incremental:no /machine:IX86 /nodefaultlib:libc.lib
+#END 
+
+#-----------------------------------------------------------------------------
+
+register.rsp:	$(.path.obj)\register.rsp
+
+$(.path.obj)\register.rsp:      $(IBLICEN_DLL_OBJS)
+	$(RM) $(.path.obj)\register.rsp
+		&echo $(ROOT)\register\$** >> $(.path.obj)\register.rsp
+
+gen_license.exe:       $(GEN_LICS_OBJS) $(NODE_LINK)
+	-$(RM) $(.path.obj)\gen_license.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS)
+$(O_EXE_SWITCH)$(.path.obj)\gen_license
+$(GDSSHR_LINK) USER32.LIB $(VER_RES_LINK)
+!
+	$(TOUCH) $(.path.obj)\gen_license.exe
+
+
+iblicense_cmd.exe:	$(IBLICEN_OBJS) $(JRD_MISC)
+	-$(RM) iblicen.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\iblicense_cmd
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) iblicense_cmd.exe
+
+
+iblicense.dll: $(IBLICEN_DLL_OBJS) $(JRD_MISC)
+	-$(RM) iblicense.dll
+	-$(RM) iblicense.lib
+	$(IMPLIB) -out:$(.path.obj)\iblicen_temp.lib @&&!
+$**
+!
+	$(IMPLIB) -out:$(.path.obj)\iblicen.lib -def:iblicen.bind $(.path.obj)\iblicen_temp.lib
+	$(LINK) $(ROOT)\jrd\$(.path.obj)\version_95.res $(LINK_OPTS) -out:$(.path.obj)\iblicense.dll @&&!
+-dll -entry:_CRT_INIT$(DLLENTRY) 
+$(.path.obj)\iblicen_temp.lib $(.path.obj)\iblicen.exp $(CONLIBSDLL) $(SHRLIB_LINK)
+!
+	$(RM) $(.path.obj)\iblicen_temp.lib
+	$(RM) $(.path.obj)\iblicen.exp
+	$(TOUCH) iblicense.dll
+
+#--------------------------------------------------------------------------------
+#  GUI License Tool Rules
+#--------------------------------------------------------------------------------
+iblicense.exe: $(.path.obj)\licentool.rsp licentool.res
+	$(ECHO) $(VERSION_CFLAGS) >tmp.rsp
+	$(ECHO) $(VENDOR_CFLAGS) >> tmp.rsp
+	$(ECHO) $(O_EXE_SWITCH)$(.path.obj)\iblicense.exe >> tmp.rsp
+	$(ECHO) $(RESOURCE_LINK) >> tmp.rsp
+	$(ECHO) $(LINK_FLAGS) >> tmp.rsp
+	$(CC) @tmp.rsp @$(.path.obj)\licentool.rsp
+
+licentool.res: license.rc $(LIC_VERSION_RC)
+  brcc32 $(RCFLAGS) /FO$@ license.rc $(LIC_VERSION_RC)
+
+$(.path.obj)\licentool.rsp: $(OBJS)
+	$(RM) $<
+	&$(ECHO) $** >> $<
+
+	$(TOUCH) iblicense.exe
+#--------------------------------------------------------------------------------

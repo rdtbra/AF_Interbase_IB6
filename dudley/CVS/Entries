@@ -1,0 +1,24 @@
+/ddl.c/1.3.2.2/Mon Jul 24 18:51:08 2000//TIB60_RELEASE
+/ddl.h/1.2.2.2/Mon Jul 24 18:51:08 2000//TIB60_RELEASE
+/ddl_proto.h/1.2.2.2/Mon Jul 24 18:51:08 2000//TIB60_RELEASE
+/depends.mak/1.3.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/exe.e/1.4.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/exe_proto.h/1.2.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/expan_proto.h/1.2.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/expand.c/1.2.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/expr.c/1.2.2.2/Mon Jul 24 18:51:09 2000//TIB60_RELEASE
+/expr_proto.h/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/extra_proto.h/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/extract.e/1.3.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/gener_proto.h/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/generate.c/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/hsh.c/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/hsh_proto.h/1.2.2.2/Mon Jul 24 18:51:10 2000//TIB60_RELEASE
+/lex.c/1.3.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/lex_proto.h/1.2.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/parse.c/1.2.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/parse.h/1.2.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/parse_proto.h/1.2.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/trn.c/1.3.2.2/Mon Jul 24 18:51:11 2000//TIB60_RELEASE
+/trn_proto.h/1.2.2.2/Mon Jul 24 18:51:12 2000//TIB60_RELEASE
+D

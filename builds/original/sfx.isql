@@ -1,0 +1,133 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+
+GPRE=		source/interbase/bin/gpre$(EXEC_EXT)
+ISQL=		source/interbase/bin/isql$(EXEC_EXT)
+MUISQL=		source/interbase/bin/muisql$(EXEC_EXT)
+GPRE_FLAGS=	-r -m -z -n
+
+ISQL_OBJECTS=	extract.o isql.o show.o
+ISQL_LINK_OBJS=	$(ISQL_OBJECTS)
+JRD_LINK=
+MUISQL_LINK_OBJS= extract.o muisql.o show.o
+
+all:		isql$(EXEC_EXT) muisql$(EXEC_EXT) 
+
+isql:		isqllib.a $(ISQL_OBJECTS) $(GDSSHR)
+	-$(RM) isql
+	$(CC) $(LINK_OPTS) $(ISQL_LINK_OBJS) -o isql $(GDSSHR_LINK) -lm
+	$(CHMOD_7) isql
+	$(MV) isql $(ISQL)
+	$(TOUCH) isql
+	$(CHMOD_6) isql
+
+muisql:		isql muisql.o
+	-$(RM) muisql
+	-$(CC) $(LINK_OPTS) $(MUISQL_LINK_OBJS) -o muisql $(GDSSHR_LINK) -lm $(MUISQL_MU_LIB)
+	-$(CHMOD_7) muisql
+	-$(MV) muisql $(MUISQL)
+	-$(TOUCH) muisql
+	-$(CHMOD_6) muisql
+
+isql.exe:	isqllib.lib $(ISQL_OBJECTS)
+	-$(RM) isql.exe
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)isql $(ISQL_LINK_OBJS) $(GDSSHR_LINK)
+	$(MV) isql.exe $(ISQL)
+	$(RM) isql.exe
+	$(TOUCH) isql.exe
+
+muisql.exe:				# Not currently supported on NT
+	$(TOUCH) muisql.exe
+
+isqllib.a:	$(ISQL_OBJECTS) $(SCO_OBJS_ISQLLIB)
+	-$(RM) isqllib.a
+	$(AR) isqllib.a $(ISQL_OBJECTS) $(SCO_OBJS_ISQLLIB)
+	-ranlib isqllib.a
+	$(CHMOD_6) isqllib.a
+
+libisqllib.a:    isqllib.a
+	-$(RM) libisqllib.a
+	$(CP) isqllib.a source/interbase/lib/isqllib.a
+	$(TOUCH) libisqllib.a
+	$(CHMOD_6) libisqllib.a
+
+isqllib.lib:	$(ISQL_OBJECTS)
+	-$(RM) isqllib.lib
+	$(IMPLIB) -out:isqllib.lib $(ISQL_OBJECTS)
+	$(TOUCH) isqllib.lib
+
+debug:		$(ISQL_OBJECTS) $(GDSLIB)
+	$(CC) $(LINK_OPTS) -g $(ISQL_OBJECTS) -o isql_dbg $(GDSLIB_LINK) -lm
+
+debug_nt:	$(ISQL_OBJECTS)
+	$(CC) $(DEBUG_LINK_OPTS) $(O_EXE_SWITCH)isql_dbg $(ISQL_OBJECTS) $(GDSLIB_LINK)
+
+extract.c:	extract.e
+extract.o:	extract.c isql.h \
+		extra_proto.h isql_proto.h show_proto.h \
+		source/jrd/constants.h
+isql.h:		source/jrd/flags.h
+	$(TOUCH) isql.h
+isql.c:		isql.e
+isql.o:		isql.c isql.h \
+		extra_proto.h isql_proto.h show_proto.h \
+		source/jrd/license.h source/jrd/perf.h source/jrd/constants.h \
+		source/jrd/gds_proto.h
+show.c:		show.e
+show.o:		show.c isql.h \
+		isql_proto.h show_proto.h \
+		source/jrd/constants.h source/jrd/intl.h \
+		source/jrd/license.h \
+		source/jrd/gds_proto.h
+muisql.c:	isql.c
+	-$(RM) muisql.c
+	$(CP) isql.c muisql.c
+muisql.o:	muisql.c
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) -DMU_ISQL muisql.c -o muisql.o
+
+$(GDSSHR) $(GDSLIB) $(JRD_LINK):
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+
+# This entry is used to programatically update the include file dependencies 
+# for all *.c files in the current directory.
+#
+# Note that it is specific to Solaris by using the -xM1 compiler option.
+# This option has CC generate dependency lines for the makefile - but
+# does not generate object files.
+# It is likely that a similar option exists on other platforms.
+#
+# It is recommended that depends.mak be created on a platform
+# that supports such an option.  depends.mak is not platform dependent, it uses
+# the standard makefile output format, as can be copied to platforms
+# that don't have a -xM1 feature in the c compiler.
+#
+depends.mak:
+	-$(RM) depends.out
+	-$(CC) $(CFLAGS) -xM1 *.c 1>&2 > depends.out
+	-$(RM) depends.mak
+	$(ECHO) "# depends.mak - isql"                           > depends.mak
+	$(ECHO) "# Created by 'make depends.mak'"               >> depends.mak
+	date "+# Created on %Y-%m-%d"                           >> depends.mak
+	sed -e "s:source/[a-z/]*/source:source:g" -e "s:source/isql/::g"\
+		depends.out |sort|uniq >> depends.mak
+	-$(RM) depends.out
+
+# In the event that a platform does not support the make directive "include" - 
+# concatenate "depends.mak" with the makefile.
+#
+include depends.mak
+

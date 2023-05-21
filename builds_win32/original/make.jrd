@@ -1,0 +1,247 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- JRD MAKEFILE ---------------------------------
+#       This makefile builds both the client library (gds32.dll) and the server
+#       library (ibeng32.dll).  The define CLIENT is used to determine which
+#       library to build.  The rule is 'gds32.dll' for both.
+#	Note that ibeng32.dll was previously called jrd32.dll, so things that
+#	refer to jrd are refering to the engine.
+#
+#               GDS_FILES = list of JRD files to build the given library
+#               GDS_TARGET = target library (gds32 or ibeng32)
+#               GDS_OTHER = objects from the other components that are needed
+#       
+#       There are three main rules here:
+#               dot_e_files - bring the .e files up to date
+#               gds32.dll - build a library
+#               codes.exe - build codes.exe
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+DOT_E_FILES=    blf.c codes.c dfw.c dpm.c dyn.c dyn_def.c dyn_del.c \
+		dyn_mod.c envelope.c fun.c grant.c ini.c met.c pcmet.c \
+		scl.c stats.c
+
+GPRE_FLAGS=     -n -gds -raw -ids
+
+#
+#
+#
+!ifdef CLIENT
+!message Building CLIENT gds32.dll
+GDS_FILES=      alt.c cvt.c dls.c dsc.c enc.c err.c flu.c functions.c gds.c \
+		ibinitdll.c isc.c isc_file.c isc_ipc.c isc_sync.c \
+		perf.c sch.c sdl.c thd.c utl.c why.c
+GDS_OTHER=      $(.path.obj)\gds.rsp \
+		..\dsql\$(.path.obj)\dsql.rsp \
+		..\ipserver\$(.path.obj)\ipserver.rsp \
+		..\remote\$(.path.obj)\remote.rsp \
+		..\utilities\$(.path.obj)\utilities.rsp
+GDS_TARGET=     gds32
+GDS_DLL_ENTRY=
+GDS_STATIC_LIB=$(CLIENT_STATIC_LIB)
+!else
+!message Building SERVER gds32.dll
+
+GDS_FILES=      ail.c alt.c all.c bkm.c blb.c blf.c btr.c builtin.c \
+		cch.c cmp.c cvt.c cvt2.c dls.c dfw.c dpm.c dsc.c dyn.c dyn_def.c \
+		dyn_del.c dyn_mod.c dyn_util.c enc.c err.c iberr.c event.c evl.c exe.c \
+		ext.c filters.c flu.c fun.c functions.c gds.c grant.c idx.c \
+		inf.c ini.c intl.c inuse.c isc.c isc_file.c isc_ipc.c \
+		isc_sync.c jrd.c jrn.c lck.c llio.c log.c met.c \
+		misc.c mov.c nav.c old.c opt.c pag.c par.c pcmet.c \
+		perf.c  pwd.c qatest.c rec.c rlck.c rng.c rse.c sbm.c sch.c \
+		scl.c sdl.c sdw.c shut.c sort.c sqz.c svc.c sym.c thd.c tpc.c \
+		tra.c utl.c val.c vio.c winnt.c why.c
+GDS_OTHER=      $(.path.obj)\gds.rsp   ..\dsql\$(.path.obj)\dsql.rsp \
+		..\lock\$(.path.obj)\lock.rsp ..\remote\$(.path.obj)\remote.rsp \
+		..\wal\$(.path.obj)\wal.rsp \
+		..\utilities\$(.path.obj)\utilities.rsp \
+		..\burp\$(.path.obj)\burp.rsp \
+		..\alice\$(.path.obj)\alice.rsp
+
+GDS_TARGET=     ibeng32
+GDS_DLL_ENTRY=  -entry:_CRT_INIT$(DLLENTRY)
+GDS_STATIC_LIB=$(SVR_STATIC_LIB)
+!endif
+
+!if "$(VERSION)"=="DEV"
+	GDS_BIND_FILE=$(GDS_TARGET)_dev.bind
+!else
+	GDS_BIND_FILE=$(GDS_TARGET).bind
+!endif
+
+GDS_OBJS=       $(GDS_FILES:.c=.obj) $(DEBUG_OBJECTS)
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+gds.h: ibase.h gdsold.h
+	$(CAT) ibase.h gdsold.h > gds.h
+
+codes.exe:      codes.obj
+	$(RM) codes.exe
+	$(CC) $(VERSION_CFLAGS) $(O_EXE_SWITCH)codes $(.path.obj)\codes.obj $(GDSSHR_LINK)
+
+gds32.dll:      gds.h $(.path.obj)\gds32_$(COMPILER).dll
+
+$(.path.obj)\gds32_ms.dll:      $(.path.obj)\$(GDS_TARGET).rsp $(VERSION_RES) $(GDS_BIND_FILE)
+	$(RM) $(.path.obj)\$(GDS_TARGET)_ms.lib
+	$(IMPLIB) -out:$(.path.obj)\$(GDS_STATIC_LIB) @$(.path.obj)\$(GDS_TARGET).rsp
+	$(IMPLIB) -out:$(.path.obj)\$(GDS_TARGET).lib -def:$(GDS_BIND_FILE) $(.path.obj)\$(GDS_STATIC_LIB)
+	$(LINK) /NODEFAULTLIB:libc.lib @&&! 
+	$(.path.res)\$(VERSION_RES) $(LINK_OPTS) -out:$(.path.obj)\$(GDS_TARGET).dll 
+	-base:0x40530000 -dll $(GDS_DLL_ENTRY) $(.path.obj)\$(GDS_STATIC_LIB) $(.path.obj)\$(GDS_TARGET).exp 
+	$(CONLIBSDLL) $(WSOCKLIB) $(ADVAPILIB) $(MPRLIB) GDI32.LIB USER32.LIB
+!
+	$(RM) $(.path.obj)\gds32.exp
+	$(MV) $(.path.obj)\$(GDS_TARGET).lib $(.path.obj)\$(GDS_TARGET)_ms.lib
+	implib $(.path.obj)\$(GDS_TARGET).lib $(.path.obj)\$(GDS_TARGET).dll
+	#tasm32 gdsalias.asm $(.path.obj)\gdsalias.obj
+	#tlib $(.path.obj)\$(GDS_TARGET).lib +- $(.path.obj)\gdsalias.obj
+	$(TOUCH) $(.path.obj)\gds32_ms.dll
+
+$(.path.obj)\$(GDS_TARGET).rsp: $(GDS_OTHER)
+	$(RM) $<
+	&$(CAT) $** >> $<
+
+$(.path.obj)\gds.rsp:      $(GDS_OBJS)
+	$(RM) $(.path.obj)\gds.rsp
+	&echo $(ROOT)\jrd\$** $(RSP_CONTINUE) >> $(.path.obj)\gds.rsp
+
+blf.c:          blf.e
+	$(CP) blf.e blf_tmp.e
+	$(EXPAND_DBNAME) blf_tmp.e
+	$(GPRE) -n -manual -raw blf_tmp.e blf.c 
+	$(RM) blf_tmp.e
+
+dyn_def.c:      dyn_def.e
+	$(CP) dyn_def.e dyn_def_tmp.e
+	$(EXPAND_DBNAME) dyn_def_tmp.e
+	$(GPRE) $(GPRE_FLAGS) dyn_def_tmp.e dyn_def.c 
+	$(RM) dyn_def_tmp.e
+        ..\expand_cfile dyn_def.c
+
+codes.c:        codes.e
+	$(CP) codes.e codes_tmp.e
+	$(EXPAND_DBNAME) codes_tmp.e
+	$(GPRE) -n -manual -raw -string codes_tmp.e codes.c 
+	$(RM) codes_tmp.e
+
+install_server:
+	echo "Installing InterBase Server DLLs"
+	$(CP) ..\jrd\$(.path.obj)\ibeng32.dll $(INSTALL_ROOT)\bin
+	$(CP) ..\intl\$(.path.obj)\gdsintl.dll $(INSTALL_ROOT)\intl
+	$(CP) ..\remote\$(.path.obj)\nt_server.exe $(INSTALL_ROOT)\bin\ibserver.exe
+	$(CP) ..\extlib\$(.path.obj)\ib_udf.dll $(INSTALL_ROOT)\UDF
+	$(CP) ..\extlib\$(.path.obj)\ib_util.dll $(INSTALL_ROOT)\bin
+	$(CP) ..\extlib\$(.path.obj)\ib_util.lib $(INSTALL_ROOT)\lib
+	$(CP) ..\extlib\$(.path.obj)\ib_util_ms.lib $(INSTALL_ROOT)\lib
+!if "$(VERSION)"=="DEV"
+	$(ECHO) INSTALLING PDB FILES
+        $(CP) ..\jrd\$(.path.obj)\ibeng32.pdb $(INSTALL_ROOT)\bin
+        $(CP) ..\intl\$(.path.obj)\gdsintl.pdb $(INSTALL_ROOT)\intl
+        $(CP) ..\remote\$(.path.obj)\nt_server.pdb $(INSTALL_ROOT)\bin\ibserver.pdb
+	$(CP) ..\extlib\$(.path.obj)\ib_udf.pdb $(INSTALL_ROOT)\UDF\ib_udf.pdb
+	$(CP) ..\extlib\$(.path.obj)\ib_util.pdb $(INSTALL_ROOT)\bin\ib_util.pdb
+!endif
+
+
+install_client:
+	echo "Installing InterBase Client DLL"
+	$(CP) ..\jrd\$(.path.obj)\gds32.dll $(INSTALL_ROOT)\bin
+	echo "Installing InterBase EXEs"
+	$(CP) ..\alice\$(.path.obj)\gfix.exe $(INSTALL_ROOT)\bin\gfix.exe
+	$(CP) ..\gpre\$(.path.obj)\gpre.exe $(INSTALL_ROOT)\bin\gpre.exe
+	$(CP) ..\dudley\$(.path.obj)\dudley.exe $(INSTALL_ROOT)\bin\gdef.exe
+	$(CP) ..\burp\$(.path.obj)\burp.exe $(INSTALL_ROOT)\bin\gbak.exe
+	$(CP) ..\isql\$(.path.obj)\isql.exe $(INSTALL_ROOT)\bin
+	$(CP) ..\qli\$(.path.obj)\qli.exe $(INSTALL_ROOT)\bin
+	$(CP) ..\utilities\$(.path.obj)\gsec.exe $(INSTALL_ROOT)\bin
+	$(CP) ..\utilities\$(.path.obj)\install_reg.exe $(INSTALL_ROOT)\bin\instreg.exe
+	$(CP) ..\utilities\$(.path.obj)\install_svc.exe $(INSTALL_ROOT)\bin\instsvc.exe
+	$(CP) ..\utilities\$(.path.obj)\dba.exe $(INSTALL_ROOT)\bin\gstat.exe
+	$(CP) ..\lock\$(.path.obj)\iblockpr.exe $(INSTALL_ROOT)\bin\iblockpr.exe
+	$(CP) ..\iscguard\$(.path.obj)\iscguard.exe $(INSTALL_ROOT)\bin\ibguard.exe
+	echo "Installing Link Libraries"
+	$(CP) ..\jrd\$(.path.obj)\gds32.lib $(INSTALL_ROOT)\lib
+	$(CP) ..\jrd\$(.path.obj)\gds32_ms.lib $(INSTALL_ROOT)\lib
+!if "$(VERSION)"=="DEV"
+	$(ECHO) INSTALLING PDB FILES
+        $(CP) ..\jrd\$(.path.obj)\gds32.pdb $(INSTALL_ROOT)\bin
+	$(CP) ..\alice\$(.path.obj)\gfix.pdb $(INSTALL_ROOT)\bin\gfix.pdb
+        $(CP) ..\gpre\$(.path.obj)\gpre.pdb $(INSTALL_ROOT)\bin\gpre.pdb
+        $(CP) ..\dudley\$(.path.obj)\dudley.pdb $(INSTALL_ROOT)\bin\gdef.pdb
+        $(CP) ..\burp\$(.path.obj)\burp.pdb $(INSTALL_ROOT)\bin\gbak.pdb
+        $(CP) ..\isql\$(.path.obj)\isql.pdb $(INSTALL_ROOT)\bin
+        $(CP) ..\qli\$(.path.obj)\qli.pdb $(INSTALL_ROOT)\bin
+        $(CP) ..\utilities\$(.path.obj)\gsec.pdb $(INSTALL_ROOT)\bin
+        $(CP) ..\utilities\$(.path.obj)\install_reg.pdb $(INSTALL_ROOT)\bin\instreg.pdb
+        $(CP) ..\utilities\$(.path.obj)\install_svc.pdb $(INSTALL_ROOT)\bin\instsvc.pdb
+        $(CP) ..\utilities\$(.path.obj)\dba.pdb $(INSTALL_ROOT)\bin\gstat.pdb
+        $(CP) ..\lock\$(.path.obj)\iblockpr.pdb $(INSTALL_ROOT)\bin\iblockpr.pdb
+	$(CP) ..\iscguard\$(.path.obj)\iscguard.pdb $(INSTALL_ROOT)\bin\ibguard.pdb
+!endif
+
+
+isc4.gdb:
+	echo "Making ISC4.GDB"
+	$(ISQL) -z -i ..\utilities\isc4.sql -user sysdba -pass $(LOCAL_DBA_PASSWORD)
+	$(GSEC) -user sysdba -password $(LOCAL_DBA_PASSWORD) -da isc4.gdb -add sysdba -pw masterkey
+	$(GBAK) -user sysdba -password $(LOCAL_DBA_PASSWORD) isc4.gdb isc4.gbk
+	$(CP) isc4.gbk $(INSTALL_ROOT)
+	$(CP) isc4.gdb $(INSTALL_ROOT)
+	$(RM) isc4.gdb
+	$(RM) isc4.gbk
+
+install_qli_help:
+	$(ECHO) "Installing QLI Help"
+	$(GBAK) $(UNIX_DEV_ROOT)/qli/master_help_db $(INSTALL_ROOT)\help\help.gbk
+	$(RM) $(INSTALL_ROOT)\help\help.gdb
+	$(GBAK) -r $(INSTALL_ROOT)\help\help.gbk $(INSTALL_ROOT)\help\help.gdb -user sysdba -pass $(LOCAL_DBA_PASSWORD)
+	$(RM) $(INSTALL_ROOT)\help\help.gbk
+
+install_messages:
+	$(ECHO) "Installing interbase.msg"
+	$(CP) $(ROOT)\msgs\interbase.msg $(INSTALL_ROOT)\interbase.msg
+
+install_config:
+	$(ECHO) "Installing ibconfig"
+	$(CP) $(ROOT)\builds_win32\original\ibconfig $(INSTALL_ROOT)\ibconfig
+
+include:
+	echo "Getting InterBase header files"
+	$(CP) ibase.h $(INSTALL_ROOT)\include\ibase.h
+	$(CP) perf.h $(INSTALL_ROOT)\include\perf.h
+	$(CP) ibase.h ..\ibase.h
+	$(CP) gdsold.h ..\gdsold.h
+	$(CP) ..\ibase.h+..\gdsold.h $(INSTALL_ROOT)\include\gds.h
+	$(CP) iberror.h $(INSTALL_ROOT)\include\iberror.h
+	$(RM) ..\ibase.h
+	$(RM) ..\gdsold.h
+	$(RM) sm_include
+
+$(GDS_TARGET)_dev.bind : $(GDS_TARGET).bind debug_entry.bind
+	copy $(GDS_TARGET).bind + debug_entry.bind $(GDS_TARGET)_dev.bind 
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif
+

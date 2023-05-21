@@ -1,0 +1,21 @@
+#ident "InterBase V3.1 shared filter library"
+#address .text 0x03000000
+#address .data 0x03400000
+#target /usr/lib/libgdsf_s
+#branch
+    FUNCTIONS_entrypoint	1
+#objects
+    shrfilter.o
+    functions.o
+    nr_filter.o
+#objects noload
+    -lgds_s
+#init shrfilter.o
+    _libgds_strcmp		strcmp
+    _libgds_sprintf		sprintf
+    _libgds_system		system
+    _libgds_fopen		fopen
+    _libgds_unlink		unlink
+    _libgds_fprintf		fprintf
+    _libgds_fclose		fclose
+    _libgds_fgetc		fgetc

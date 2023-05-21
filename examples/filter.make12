@@ -1,0 +1,100 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+# filter_makefile - a makefile for the blob filters example
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c :
+	gpre -z -e -n $<
+.c.o :
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the blob filter example example:
+#	make -f make.filter new
+#	make -f make.filter 
+#
+#  To run the blob_filter example:
+#	1. setenv GDS_SERVER /(absolute path of this dir)/gds_pipe
+#	2. Run slides
+#	3. Run qli
+#	   a. ready slides.gdb
+#	   b. list rdb$filters 
+# 	   c. use print statements to run them
+#
+#  When you are satisfied with your testing, save 
+#  /usr/interbase/bin/gds_pipe and copy this directory's gds_pipe
+#  to /usr/interbase/bin, the default server. You will now have
+#  access to the blob filters without doing a setenv GDS_SERVER.
+#  When you are satisfied that local access to blob filters
+#  is working properly, you can make gds_dnet_server gds_inet_server,
+#  save a copy of these servers in /usr/interbase/bin and copy this
+#  directory's versions of them /usr/interbase/bin. Now remote processes
+#  have access to the blob filters. NOTE: blob filters
+#  are always performed locally.
+#  
+#  
+CFLAGS = -g
+FUNCOBJS = nr_filter.o 
+FUNCGDB = slides.gdb
+JRDLIB	= gds_b.a
+PIPELIB	= -lgds
+
+slides :	slides.o 
+		cc -g slides.o $(PIPELIB) -o slides
+		@echo "    REMEMBER TO: "
+		@echo "    GDS_SERVER=./gds_pipe "
+		@echo "    export GDS_SERVER "
+		@echo "    BEFORE RUNNING SLIDES! "
+
+new :		
+		cp /usr/interbase/lib/gds_b.a .
+		cp /usr/interbase/examples/v3/filter_func.c .
+		cp /usr/interbase/examples/v3/nr_filter.c .
+		cp /usr/interbase/examples/v3/slides.gdl .
+		cp /usr/interbase/examples/v3/slides.e .
+		chmod 666 *.a *.c *.e *.gdl 
+		gbak -r -z /usr/interbase/examples/v3/slides.gbak slides.gdb
+		
+gds_pipe :	gds_b.a
+		cc -g /usr/interbase/lib/gds_pipe.a gds_b.a -lm -o gds_pipe
+
+gds_dnet_server : gds_b.a
+		cc -g /usr/interbase/lib/gds_dnet_server.a gds_b.a -lm -o gds_dnet_server
+
+gds_inet_server : gds_b.a
+		cc -g /usr/interbase/lib/gds_inet_server.a gds_b.a -lm -o gds_inet_server
+
+gds_b.a :	funclib.o functions.o
+		ar rls gds_b.a functions.o funclib.o
+
+funclib.o : 	$(FUNCOBJS) 
+		ld -r $(FUNCOBJS) -o funclib.o
+
+nr_filter.o :	nr_filter.c
+		cc $(CFLAGS) -c nr_filter.c
+
+slides.o :	slides.c
+functions.o :	filter_func.c
+		cc $(CFLAGS) -c filter_func.c
+		ld -r filter_func.o -o functions.o
+slides.c :	gds_pipe slides.e
+
+clean	:	
+		rm -f gds_b.a gds_*net_server gds_pipe slides*
+		rm -f nr_filter.* filter_func.* functions.o funclib.o

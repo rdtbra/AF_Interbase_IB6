@@ -1,0 +1,133 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program test (OUTPUT);
+
+{* CENSUS REPORT *}
+
+{* Include the SQL Communications Area *}
+EXEC SQL
+	INCLUDE SQLCA
+
+{* Set up to catch SQL errors. Note: this will require that each
+   routine which contains executeable SQL commands to have an
+   error handling section labeled '999'. *}
+EXEC SQL
+	WHENEVER SQLERROR GO TO 999
+label 999;
+
+procedure print_error;
+{* Print out error message *}
+begin
+	writeln ('Data base error, SQLCODE = ', SQLCODE);
+	gds__print_status (gds__status);
+end; {* print_error *}
+
+function setup: integer;
+{* Put in estimated data for missing 1960 & 1970 census data.
+   Return 1 if successful, 0 otherwise.  *}
+label 999;
+begin
+	{* Replace missing 1960 census data with estimates *}
+
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1960 = 0.3 * (CENSUS_1980 - CENSUS_1950)
+		WHERE CENSUS_1960 IS NULL;
+
+	{* Replace missing 1970 census data with estimates *}
+
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1970 = 0.65 * (CENSUS_1980 - CENSUS_1950)
+		WHERE CENSUS_1970 IS NULL;
+
+	setup := 1;
+
+999:	if SQLCODE <> 0 then
+		begin
+		print_error;
+		setup := 0;
+		end;
+end; {* setup *}
+
+procedure census_report;
+	{* Declare variables to receive data retrieved by SQL commands *}
+var
+	pop_50, pop_60, pop_70, pop_80: integer;
+	stname: packed array [1..25] of char;
+label 999;
+begin
+	{* Declare cursor for use in retrieving state/census data *}
+        EXEC SQL
+		DECLARE C CURSOR FOR
+		SELECT STATE_NAME, CENSUS_1950, CENSUS_1960,
+			CENSUS_1970, CENSUS_1980
+		FROM STATES S, POPULATIONS P
+		WHERE S.STATE = P.STATE
+		ORDER S.STATE_NAME;
+
+	{* Open cursor for use in retrieving state/census data *}
+	EXEC SQL
+		OPEN C;
+
+	{* Print report header *}
+        writeln ('	STATE			',
+		'			POPULATION');
+	writeln ('				    1950',
+		'	    1960	    1970	    1980');
+	writeln;
+
+	{* Retrieve first set of state/census data *}
+	EXEC SQL
+		FETCH C INTO :stname, :pop_50, :pop_60, :pop_70, :pop_80;
+
+	{* Until end of data stream is reached, print out current set
+	   of data and then fetch next set *}
+	while SQLCODE = 0 do
+		begin
+                writeln (stname, pop_50:9, '	', pop_60:9 ,'	',
+			pop_70:9, '	', pop_80:9);
+
+		{* Retrieve next set of state/census data *}
+		EXEC SQL
+			FETCH C INTO :stname, :pop_50, :pop_60,
+				 :pop_70, :pop_80;
+		end;
+
+	{* Close cursor *}
+	EXEC SQL
+		CLOSE C;
+
+999:	if SQLCODE <> 0 then print_error;
+end; {* census_report *}
+
+begin
+
+{* Set up estimated data; if successful then do report *}
+if setup = 1 then census_report;
+
+{* Undo estimated census data *}
+EXEC SQL
+	ROLLBACK;
+
+{* Output error information *}
+999:	if SQLCODE <> 0 then print_error;
+end.

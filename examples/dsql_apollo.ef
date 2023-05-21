@@ -1,0 +1,109 @@
+C  The contents of this file are subject to the Interbase Public
+C  License Version 1.0 (the "License"); you may not use this file
+C  except in compliance with the License. You may obtain a copy
+C  of the License at http://www.Inprise.com/IPL.html
+C
+C  Software distributed under the License is distributed on an
+C  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+C  or implied. See the License for the specific language governing
+C  rights and limitations under the License.
+C
+C  The Original Code was created by Inprise Corporation
+C  and its predecessors. Portions created by Inprise Corporation are
+C  Copyright (C) Inprise Corporation.
+C
+C  All Rights Reserved.
+C  Contributor(s): ______________________________________.
+
+C**************************************************************************
+C
+C	A simple minded example of Dynamic SQL.
+C	The query to be executed is simply from a string constant, in a
+C	real application the query string would be developed through
+C	interaction of some sort with the user.
+C
+C**************************************************************************
+
+
+C  Declare variables to receive data. Note: if it is not known before hand
+C  the nature of the fields to be retrieved, it would be necessary to allocate
+C  buffer space for the fields at run time, rather than using predeclared
+C  fields.
+      character*25 city
+      character*4 state
+      integer*4 population
+      integer*2 flag1, flag2, flag3
+      character*61 query
+
+C  Setting up a SQLDA in FORTRAN is a bit painful as you can see below. If you
+C  really want to use Dynamic SQL you might want to consider a language which
+C  support structured data type and pointers. If your heart is set on FORTRAN,
+C  this is how you do it.
+
+      integer*2 sqlda(1)
+      character*8 sqldaid
+      integer*4 sqldabc
+      integer*2 sqln, sqld
+      integer*2 sqlvar_type1, sqlvar_type2, sqlvar_type3
+      integer*2 sqlvar_len1, sqlvar_len2, sqlvar_len3
+      integer*4 sqlvar_data1, sqlvar_data2, sqlvar_data3
+      integer*4 sqlvar_ind1, sqlvar_ind2, sqlvar_ind3
+      integer*2 sqlvar_namelen1, sqlvar_namelen2, sqlvar_namelen3
+      character*30 sqlvar_name1, sqlvar_name2, sqlvar_name3
+      common /sqldacmn/ sqldaid, sqldabc, sqln, sqld, 
+     *    sqlvar_type1, sqlvar_len1, sqlvar_data1, sqlvar_ind1,
+     *    sqlvar_namelen1, sqlvar_name1,
+     *    sqlvar_type2, sqlvar_len2, sqlvar_data2, sqlvar_ind2,
+     *    sqlvar_namelen2, sqlvar_name2,
+     *    sqlvar_type3, sqlvar_len3, sqlvar_data3, sqlvar_ind3,
+     *    sqlvar_namelen3, sqlvar_name3
+      equivalence (sqlda, sqldaid)
+      EXEC SQL INCLUDE SQLCA
+      data sqln /3/
+
+      EXEC SQL WHENEVER SQLERROR GO TO 999
+
+C  Set up the query statement
+      query =
+     * 'SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = ''NY'''
+
+C  Prepare the query 
+      EXEC SQL PREPARE Q INTO sqlda FROM :query
+
+C  Set up SQLDA to point to declared fields, forcing character fields
+C  to be SQL_TEXT, since FORTRAN will frown on SQL_VARYING fields.
+ 
+      flag1 = 0
+      sqlvar_data1 = iaddr(city)
+      sqlvar_ind1 = iaddr(flag1)
+      sqlvar_type1 = SQL_TEXT + 1
+
+      flag2 = 0
+      sqlvar_data2 = iaddr(state)
+      sqlvar_ind2 = iaddr(flag2)
+      sqlvar_type2 = SQL_TEXT + 1
+
+      population = 0
+      flag3 = 0
+      sqlvar_data3 = iaddr(population)
+      sqlvar_ind3 = iaddr(flag3)
+
+      EXEC SQL DECLARE C CURSOR FOR Q
+
+      EXEC SQL OPEN C
+
+C  Fetch and print out records 
+100   continue
+      EXEC SQL FETCH C USING DESCRIPTOR sqlda
+      if (SQLCODE .ne. 0) go to 101
+      write (*,*) city, state, population
+      go to 100
+101   continue
+      EXEC SQL COMMIT RELEASE
+
+      stop
+
+999   write (*,*) 'Data base error, SQLCODE = ', SQLCODE
+      CALL gds__print_status (gds__status)
+      stop
+      end

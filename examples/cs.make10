@@ -1,0 +1,139 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.cs	Build C-language example of creating, defining, and calling UDF
+# designed specifically for DGUX/5.4 with shareable object libraries
+#
+#  To build the example:
+#	make -f make.cs new
+#	make -f make.cs demo
+#
+# With a properly set up shareable object library and LD_LIBRARY_PATH
+# you will be able to test functions through qli and other interbase
+# utilities.
+#
+
+.SUFFIXES : .o .c .e
+
+.e.c :
+	$(GPRE) -z -e -n $<
+.c.o :
+	$(CC) $(CFLAGS) -K PIC $<
+
+# DG definitions
+
+CFLAGS=	-w -g -c
+INTERBASE= /usr/interbase
+IBEXE=	$(INTERBASE)/bin
+LINK=	cc
+OPTGDS=	-lgds -lgdsf
+OPTBIN=	-o
+
+# common definitions
+
+GDSLIB=	$(INTERBASE)/lib/gds.so
+GBAK=	$(IBEXE)/gbak -z
+GCON=	$(IBEXE)/gcon -z
+GFIX=	$(IBEXE)/gfix -z
+GDEF=	$(IBEXE)/gdef -z
+GPRE=	$(IBEXE)/gpre -z
+GRST=	$(IBEXE)/grst -z
+QLI=	$(IBEXE)/qli -z
+
+FUNCOBJ=	cs_convert.o 
+FUNCLIB=	gdsf.so
+EXAMPLES=	$(INTERBASE)/intl
+
+todo:	
+	-@echo First do "make -f make.cs new" > todo
+	-@echo Then  do "make -f make.cs demo" >> todo
+	-@echo  >> todo
+	-@echo use setenv to define LD_LIBRARY_PATH to use local libraries >> todo
+	-@echo type: 		setenv LD_LIBRARY_PATH . >> todo
+	-@echo to make the right libraries available >> todo
+	-@cat todo
+
+new:
+	cp $(EXAMPLES)/cs_convert.c .
+	-cp $(EXAMPLES)/cs_funct.c ./functions.c
+	cp $(EXAMPLES)/437_to_865.h .
+	cp $(EXAMPLES)/437_to_lat1.h .
+	cp $(EXAMPLES)/865_to_lat1.h .
+	cp $(EXAMPLES)/products.lat1 .
+	cp $(EXAMPLES)/users.lat1 .
+	cp $(EXAMPLES)/clients.437 .
+	cp $(EXAMPLES)/contacts.437 .
+	cp $(EXAMPLES)/cs_load.gdl .
+	cp $(EXAMPLES)/cs_demo.gdl .
+	cp $(EXAMPLES)/cs_load.qli .
+	chmod 666 *.c *.gdl *.h *.437 *.lat1 *.qli
+
+
+#	Build special gdsf that includes the udf.
+
+gdsf.so: cs_convert.o functions.o
+	ld -G -o gdsf.so functions.o cs_convert.o -z defs -lm -lc
+#
+#	To test shareable objects use ln to define links to gds and gdsf.
+#	gds.so needs to include the gdsf.so found in the same directory
+#	so we define the current directory as the first place to look.
+#
+	-@ln -s $(GDSLIB) libgds.so
+	-@ln -s gdsf.so libgdsf.so
+
+#	Build the database against which to build the udf test.
+
+demo:	cs_demo.gdb
+
+cs_demo.gdb:	$(FUNCLIB)
+	sed -e s:CONVERT_MODULE:convert.o:g cs_demo.gdl > tmp.gdl
+	$(GDEF) cs_load.gdl 
+	@echo "#\!/bin/csh " > tmp.com 
+	@echo setenv LD_LIBRARY_PATH . >> tmp.com 
+	@echo $(GDEF) tmp.gdl >> tmp.com
+	@echo $(QLI) -a cs_load.qli >> tmp.com
+	@chmod 777 tmp.com
+	@cat tmp.com
+	@/bin/csh < tmp.com
+	-@rm tmp.com
+	-@rm tmp.gdl
+	-@echo   
+	-@echo use setenv to define LD_LIBRARY_PATH to use local libraries
+	-@echo type: 		setenv LD_LIBRARY_PATH .
+	-@echo to make the right libraries available
+	-@echo
+
+functions.o:	functions.c
+cs_convert.o:	cs_convert.c 437_to_865.h 437_to_lat1.h 865_to_lat1.h
+
+#	Clean up by deleting all files we created, except basic ingredients.
+
+clean:
+	-@rm todo
+	-@rm cs_convert.c
+	-@rm 437_to_865.h 
+	-@rm 437_to_lat1.h 
+	-@rm 865_to_lat1.h 
+	-@rm cs_demo.gdl cs_demo.gdb
+	-@rm cs_load.gdl cs_load.gdb cs_load.qli
+	-@rm users.lat1 products.lat1
+	-@rm clients.437 contacts.437
+	-@rm functions.c
+	-@rm cs_convert.o  functions.o
+	-@rm gdsf.so
+	-@rm libgdsf.so
+	-@rm libgds.so
+

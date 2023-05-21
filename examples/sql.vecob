@@ -1,0 +1,151 @@
+IDENTIFICATION DIVISION.
+PROGRAM-ID. C_REPORT.
+*
+* The contents of this file are subject to the Interbase Public
+* License Version 1.0 (the "License"); you may not use this file
+* except in compliance with the License. You may obtain a copy
+* of the License at http://www.Inprise.com/IPL.html
+*
+* Software distributed under the License is distributed on an
+* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+* or implied. See the License for the specific language governing
+* rights and limitations under the License.
+*
+* The Original Code was created by Inprise Corporation
+* and its predecessors. Portions created by Inprise Corporation are
+* Copyright (C) Inprise Corporation.
+*
+* All Rights Reserved.
+* Contributor(s): ______________________________________.
+*
+
+*
+* CENSUS_REPORT
+*
+ENVIRONMENT DIVISION.
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+* Include the SQL Communications Area */
+    EXEC SQL
+         INCLUDE SQLCA
+    END-EXEC
+
+* Declare variables to receive data retrieved by SQL commands */
+01  STNAME PIC X(25).
+01  POP_50 PIC S9(9) USAGE COMP.
+01  POP_60 PIC S9(9) USAGE COMP.
+01  POP_70 PIC S9(9) USAGE COMP.
+01  POP_80 PIC S9(9) USAGE COMP.
+01  D_POP_50 PIC Z(9).
+01  D_POP_60 PIC Z(9).
+01  D_POP_70 PIC Z(9).
+01  D_POP_80 PIC Z(9).
+01  D_SQLCODE	PIC Z(4).
+
+PROCEDURE DIVISION.
+MAIN_ROUTINE.
+
+*	Set up to catch SQL errors. Note: this will require that each
+*	routine which contains executeable SQL commands to have an
+*	error handling section labeled 'ERR'.
+	EXEC SQL
+		WHENEVER SQLERROR GO TO ERR
+	END-EXEC
+
+	PERFORM SETUP.
+	IF SQLCODE NOT LESS THAN 0 THEN PERFORM CENSUS_REPORT.
+	EXEC SQL
+		ROLLBACK
+	END-EXEC
+	STOP RUN.
+
+PRINT_ERROR.
+*	Print out error message
+
+	MOVE SQLCODE TO D_SQLCODE.
+	DISPLAY "Data base error, SQLCODE = ", D_SQLCODE.
+
+SETUP.
+
+*	Put in estimated data for missing 1960 & 1970 census data.
+*	Return 1 if successful, 0 otherwise.
+
+*	Replace missing 1960 census data with estimates
+
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1960 = 0.3 * (CENSUS_1980 - CENSUS_1950)
+		WHERE CENSUS_1960 IS NULL
+	END-EXEC
+
+*	Replace missing 1970 census data with estimates
+
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1970 = 0.65 * (CENSUS_1980 - CENSUS_1950)
+		WHERE CENSUS_1970 IS NULL
+	END-EXEC.
+
+
+CENSUS_REPORT.
+
+*	Declare cursor for use in retrieving state/census data
+        EXEC SQL
+		DECLARE C CURSOR FOR
+		SELECT STATE_NAME, CENSUS_1950, CENSUS_1960,
+			CENSUS_1970, CENSUS_1980
+		FROM STATES S, POPULATIONS P
+		WHERE S.STATE = P.STATE
+		ORDER S.STATE_NAME
+	END-EXEC
+
+*	Open cursor for use in retrieving state/census data
+	EXEC SQL
+		OPEN C
+	END-EXEC
+
+*	Print report header
+	DISPLAY "     STATE               ",
+		"                  POPULATION".
+	DISPLAY "                             1950",
+        	"        1960        1970        1980".
+	DISPLAY " ".
+
+*	Retrieve first set of state/census data
+	EXEC SQL
+		FETCH C INTO :STNAME, :POP_50, :POP_60, :POP_70, :POP_80
+	END-EXEC
+
+*	Until end of data stream is reached, print out current set
+*	of data and then fetch next set
+	PERFORM CENSUS_LINE UNTIL SQLCODE NOT = 0.
+
+*	Close cursor
+	EXEC SQL
+		CLOSE C
+	END-EXEC.
+
+CENSUS_LINE.
+	MOVE POP_50 TO D_POP_50.
+	MOVE POP_60 TO D_POP_60.
+	MOVE POP_70 TO D_POP_70.
+	MOVE POP_80 TO D_POP_80.
+	DISPLAY STNAME, D_POP_50, "   ", D_POP_60, "   ",
+		D_POP_70, "   ", D_POP_80.
+
+*	Retrieve next set of state/census data */
+	EXEC SQL
+		FETCH C INTO :STNAME, :POP_50, :POP_60,
+			 :POP_70, :POP_80
+	END-EXEC.
+
+*	Error return
+ERR.
+	EXEC SQL
+		WHENEVER SQLERROR CONTINUE
+	END-EXEC
+	PERFORM PRINT_ERROR.
+	EXEC SQL
+		ROLLBACK
+	END-EXEC
+	STOP RUN. 

@@ -1,0 +1,12 @@
+#ident "InterBase V3.3 shared UDF library"
+#address .text 0x03000000
+#address .data 0x03400000
+#target /usr/lib/libgdsf_s
+#branch
+    FUNCTIONS_entrypoint	1
+#objects
+    shrcs.o
+    functions.o
+    cs_convert.o
+#init shrcs.o
+    _libfun_strcmp		strcmp

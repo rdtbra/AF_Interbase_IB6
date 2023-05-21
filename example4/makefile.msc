@@ -1,0 +1,126 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# this makefile assumes Microsoft Visual C++ 2.0
+# edit the IBASE variable to point to the Interbase directory
+IBASE=		..
+# edit the MSTDIR variable to point to the Microsoft tools directory
+MSTDIR=		\msvc20
+INCLUDE=	-I$(IBASE)\include -I$(MSTDIR)\include
+LIBS=		$(MSTDIR)\lib\msvcrt.lib $(IBASE)\lib\gds32_ms.lib
+DB=		employee.gdb
+GPRE=		$(IBASE)\bin\gpre -c -n
+GPRE_M=		$(IBASE)\bin\gpre -c -n -m
+ISQL=		$(IBASE)\bin\isql
+CFLAGS=		-Zi -w -MD -DWIN32 $(INCLUDE)
+CC=		cl
+LINK=		link
+LIBRARIAN=	lib
+COPY=		copy
+
+.SUFFIXES: .e .c
+
+.e.exe:
+	$(GPRE) $< -d $(DB)
+	$(CC) $(CFLAGS) $(<:.e=.c) $(LIBS)
+
+.c.exe:
+	$(CC) $(CFLAGS) $< $(LIBS)
+
+
+all: employe2.gdb api1.exe api10.exe api11.exe api12.exe api13.exe \
+     api14.exe api15.exe api16.exe api16t.exe api2.exe api3.exe \
+     api4.exe api5.exe api6.exe api7.exe api8.exe \
+     api9.exe apifull.exe dyn1.exe dyn2.exe dyn3.exe dyn4.exe \
+     dyn5.exe dynfull.exe stat1.exe stat10.exe \
+     stat11.exe stat12.exe stat12t.exe stat2.exe stat3.exe \
+     stat4.exe stat5.exe stat6.exe stat7.exe stat8.exe stat9.exe \
+     FILTERLIB FUNCLIB
+
+employe2.gdb: create2.sql
+	$(ISQL) -i $?
+
+FILTERLIB: api9f.dll api9f.lib
+
+api9f.lib api9f.exp: api9f.obj api9f.def
+	$(LIBRARIAN) api9f.obj -out:api9f.lib -def:api9f.def -machine:i386 \
+	-subsystem:console
+
+api9f.dll: api9f.exp api9f.obj
+# build a small argument file and use it
+	@echo -entry:_DllMainCRTStartup@12 > link.arg
+        @echo -subsystem:console -DLL -DEBUG:FULL >> link.arg
+        @echo -out:$@ >> link.arg
+	@echo $? $(LIBS) >> link.arg
+	$(LINK) @link.arg
+	$(COPY) $@ FILTERLIB.DLL
+
+api9f.obj: api9f.c
+	$(CC) $(CFLAGS) -c -LD $?
+
+api9.exe: api9.c
+	$(CC) $(CFLAGS) $? $(LIBS)
+	-$(ISQL) employee.gdb -i filter.sql
+
+api14.c:  api14.e
+	$(GPRE_M) $? -d $(DB)
+
+FUNCLIB: udflib.dll udflib.lib
+
+udflib.lib udflib.exp: udflib.obj udflib.def
+	$(LIBRARIAN) udflib.obj -out:udflib.lib -def:udflib.def -machine:i386 \
+	-subsystem:console
+
+udflib.dll: udflib.obj udflib.exp
+# build a small argument file and use it
+	@echo -entry:_DllMainCRTStartup@12 > link.arg
+        @echo -subsystem:console -DLL >> link.arg
+        @echo -out:$@ >> link.arg
+	@echo $? $(LIBS) >> link.arg
+	$(LINK) @link.arg
+
+udflib.obj: udflib.c
+	$(CC) $(CFLAGS) -c -LD $?
+
+stat10.c: stat10.e
+	$(GPRE_M) $?
+
+stat11.c: stat11.e
+	$(GPRE_M) $?
+
+stat12.c: stat12.e
+	$(GPRE_M) $?
+
+stat12t.c: stat12t.e
+	$(GPRE_M) $?
+
+dyn1.c: dyn1.e
+	$(GPRE_M) $?
+
+dyn2.c: dyn2.e
+	$(GPRE_M) $?
+
+dyn3.c: dyn3.e
+	$(GPRE_M) $?
+
+dyn4.c: dyn4.e
+	$(GPRE_M) $?
+
+dyn5.c: dyn5.e
+	$(GPRE_M) $?
+
+dynfull.c: dynfull.e
+	$(GPRE_M) $?

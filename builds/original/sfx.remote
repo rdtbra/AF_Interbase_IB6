@@ -1,0 +1,296 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+
+GPRE=		source/interbase/bin/gpre$(EXEC_EXT)
+
+DEBUG_INET_INSTALL=source/interbase/bin/inet_dbg$(EXEC_EXT)
+
+JRD_LINK=	source/jrd/isc.o source/jrd/isc_sync.o \
+		source/jrd/sdl.o source/jrd/thd.o source/jrd/iberr.o
+JRD_LINK2=	source/jrd/isc_file.o
+
+REMOTE_OBJECTS=		allr.o inet.o merge.o parser.o protocol.o remote.o \
+			$(NET_OBJECTS)
+INTERFACE_OBJECTS=	interface.o $(REMOTE_OBJECTS)
+SERVER_OBJECTS=		divorce.o server.o
+INTERFACE_P_OBJECTS=	interface.bin allr.bin inet.bin merge.bin parser.bin \
+			protocol.bin remote.bin $(NET_P_OBJECTS)
+REMOTE_J_OBJECTS=	merge.j
+
+REMOTE_CLIENT_P_OBJECTS=	allr.bin inet.bin interface.bin merge.bin \
+				parser.bin protocol.bin \
+				remote.bin $(NET_P_OBJECTS)
+
+all:		rem_objects $(REMOTE_P_OBJS) inet_server$(EXEC_EXT) \
+		$(INET_LIBRARY) $(DNET_SERVER) $(AMBX_SERVER) $(WNET_SERVER) \
+		rem_$(SPECIAL_OBJECTS)_objects
+
+
+remotelib:	$(INTERFACE_OBJECTS) $(JRD_LINK)
+	-$(RM) remotelib
+	/com/bind <bind_remotelib
+	$(CHMOD_7) remotelib
+	$(MV) remotelib source/interbase/lib/remotelib
+	$(TOUCH) remotelib
+	$(CHMOD_6) remotelib
+
+rem_objects:	$(INTERFACE_OBJECTS)
+	-$(RM) rem_objects
+	$(TOUCH) rem_objects
+	$(CHMOD_6) rem_objects
+
+rem_p_objects:	$(INTERFACE_P_OBJECTS)
+	-$(RM) rem_p_objects
+	$(TOUCH) rem_p_objects
+	$(CHMOD_6) rem_p_objects
+
+rem_j_objects:	$(REMOTE_J_OBJECTS)
+	-$(RM) rem_j_objects
+	$(TOUCH) rem_j_objects
+	$(CHMOD_6) rem_j_objects
+	
+rem__objects:
+	-$(RM) rem__objects
+	$(TOUCH) rem__objects
+	$(CHMOD_6) rem__objects
+	
+super_server:	inet_server.o $(SERVER_OBJECTS)	$(SUPER_BACKEND)
+	-$(RM) super_server
+	$(CC) $(LINK_OPTS) $(UDF_LINK_OPTS) inet_server.o $(SERVER_OBJECTS) -o super_server $(SUPER_LINK)
+	$(MV) super_server $(SUPER_SERVER_DEST)
+	$(TOUCH) super_server
+	$(CHMOD_6) super_server
+
+super_client_objects:	$(REMOTE_CLIENT_P_OBJECTS)
+	-$(RM) super_client_objects
+	$(TOUCH) super_client_objects
+	$(CHMOD_6) super_client_objects
+
+# This target is for building with Purify(tm) memory checker
+super_server.pure:	super_server
+	-$(RM) super_server.pure
+	$(PURIFY) $(CC) $(LINK_OPTS) $(UDF_LINK_OPTS) inet_server.o $(SERVER_OBJECTS) -o super_server.pure $(SUPER_LINK)
+	$(MV) super_server.pure source/interbase/bin/gds_super_server.pure 
+	$(TOUCH) super_server.pure
+	$(CHMOD_6) super_server.pure
+
+# This target is for building with Quantify(tm) pure-tool
+super_server.quantify:  super_server
+	-$(RM) super_server.quantify
+	$(QUANTIFY) $(CC) $(LINK_OPTS) $(UDF_LINK_OPTS) inet_server.o $(SERVER_OBJECTS) -o super_server.quantify $(SUPER_LINK)
+	$(MV) super_server.quantify source/interbase/bin/gds_super_server.quantify
+	$(TOUCH) super_server.quantify
+	$(CHMOD_6) super_server.quantify
+
+inet_server:	inet_server.o $(SERVER_OBJECTS) $(REMOTE_OBJECTS) \
+		$(JRD_LINK) $(REMOTE_GDSSHR) debug_$(VERSION)
+	-$(RM) inet_server
+	$(CC) $(LINK_OPTS) inet_server.o $(SERVER_OBJECTS) \
+		-o inet_server $(REMOTE_GDSSHR_LINK)
+	$(CHMOD_S7) inet_server
+	$(MV) inet_server $(INET_SERVER_DEST)
+	$(TOUCH) inet_server
+	$(CHMOD_6) inet_server
+
+inet_server.exe: inet_server.o server.o $(REMOTE_OBJECTS) \
+		$(JRD_LINK) $(REMOTE_GDSSHR)
+	-$(RM) inet_server.exe remote.rsp
+	$(ECHO) inet_server.o server.o $(REMOTE_OBJECTS) \
+		$(JRD_LINK) $(JRD_LINK2) > remote.rsp
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)inet_server \
+		@remote.rsp $(GDSSHR_LINK) $(WSOCKLIB) $(ADVAPILIB) $(MPRLIB)
+	$(MV) inet_server.exe $(INET_SERVER_DEST)
+	$(RM) inet_server.exe remote.rsp
+	$(TOUCH) inet_server.exe
+
+dnet_server:	dnet_server.o $(SERVER_OBJECTS) $(REMOTE_OBJECTS) \
+		$(JRD_LINK) $(REMOTE_GDSSHR)
+	-$(RM) dnet_server
+	$(CC) $(LINK_OPTS) dnet_server.o $(SERVER_OBJECTS) \
+		-o dnet_server $(REMOTE_GDSSHR_LINK)
+	$(CHMOD_S7) dnet_server
+	$(MV) dnet_server $(DNET_SERVER_DEST)
+	$(TOUCH) dnet_server
+	$(CHMOD_6) dnet_server
+
+gds_server:	ambx_server.o $(SERVER_OBJECTS) $(REMOTE_OBJECTS) \
+		$(JRD_LINK) $(REMOTE_GDSSHR)
+	-$(RM) gds_server
+	$(CC) $(LINK_OPTS) ambx_server.o $(SERVER_OBJECTS) \
+		-o gds_server $(REMOTE_GDSSHR_LINK)
+	$(CHMOD_7) gds_server
+	$(MV) gds_server $(AMBX_SERVER_DEST)
+	$(TOUCH) gds_server
+	$(CHMOD_6) gds_server
+
+nt_server.exe: nt_server.o server.o cntl.o $(REMOTE_OBJECTS) $(JRD_LINK)
+	-$(RM) nt_server.exe
+	$(CC) $(LINK_OPTS) $(O_EXE_SWITCH)nt_server \
+		nt_server.o server.o cntl.o $(REMOTE_GDSSHR_LINK)
+	$(MV) nt_server.exe $(NT_SERVER_DEST)
+	$(RM) nt_server.exe
+	$(TOUCH) nt_server.exe
+
+inet_server.a:	inet_server.o $(SERVER_OBJECTS) $(SCO_OBJS_REMLIB)
+	-$(RM) inet_server.a
+	$(AR) inet_server.a inet_server.o $(SERVER_OBJECTS) $(SCO_OBJS_REMLIB)
+	-ranlib inet_server.a
+	$(CHMOD_6) inet_server.a
+	$(MV) inet_server.a $(INET_LIB_DEST)
+	$(TOUCH) inet_server.a
+	$(CHMOD_6) inet_server.a
+
+dnet_server.a:	dnet_server.o $(SERVER_OBJECTS)
+	-$(RM) dnet_server.a
+	$(AR) dnet_server.a dnet_server.o $(SERVER_OBJECTS)
+	-ranlib dnet_server.a
+	$(CHMOD_6) dnet_server.a
+	$(MV) dnet_server.a $(DNET_LIB_DEST)
+	$(TOUCH) dnet_server.a
+	$(CHMOD_6) dnet_server.a
+
+debug_PROD:	
+
+debug_DEV:	debug_inet_server
+	-$(RM) debug_DEV
+	-$(RM) $(DEBUG_INET_INSTALL)
+	-$(MV) inet_dbg $(DEBUG_INET_INSTALL)
+	-$(CHMOD_S7) $(DEBUG_INET_INSTALL)
+	$(TOUCH) debug_DEV
+	$(CHMOD_6) debug_DEV
+
+debug:		debug_inet_server debug_$(DNET_SERVER) debug_$(AMBX_SERVER)
+
+debug_inet_server:	inet_server.o $(SERVER_OBJECTS) $(INTERFACE_OBJECTS) \
+			$(JRD_LINK) $(GDSLIB_BACKEND)
+	-$(RM) debug_inet_server
+	$(CC) $(LINK_OPTS) -g inet_server.o $(SERVER_OBJECTS) $(INTERFACE_OBJECTS) \
+		-o inet_dbg $(GDSLIB_LINK)
+	$(TOUCH) debug_inet_server
+	$(CHMOD_6) debug_inet_server
+
+debug_dnet_server:	dnet_server.o $(SERVER_OBJECTS) $(REMOTE_OBJECTS) \
+			$(JRD_LINK) $(GDSLIB_BACKEND)
+	$(CC) $(LINK_OPTS) -g dnet_server.o $(SERVER_OBJECTS) \
+		-o dnet_dbg $(GDSLIB_LINK)
+
+debug_gds_server:	ambx_server.o $(SERVER_OBJECTS) $(GDSLIB_BACKEND)
+	$(CC) $(LINK_OPTS) ambx_server.o $(SERVER_OBJECTS) \
+		-o server_dbg $(GDSLIB_LINK)
+
+debug_nt:
+	$(CC) $(DEBUG_LINK_OPTS) $(O_EXE_SWITCH)nt_dbg nt_server.o server.o cntl.o $(REMOTE_OBJECTS) $(GDSLIB_LINK)
+	
+debug_:
+
+allr.o:		allr.c remote.h blk.h source/jrd/ibsetjmp.h \
+		allr_proto.h source/jrd/gds_proto.h
+ambx.o:		ambx.c remote.h source/jrd/thd.h
+ambx_server.o:	ambx_server.c remote.h source/jrd/license.h
+cntl.o:		cntl.c remote.h source/jrd/thd.h
+decnet.o:	decnet.c remote.h source/jrd/thd.h
+decnet_server.o: decnet_server.c remote.h source/jrd/license.h source/jrd/thd.h
+dnet.o:		dnet.c remote.h 
+divorce.o:	divorce.c
+inet.o:		inet.c remote.h inet_proto.h remot_proto.h \
+		source/jrd/thd.h source/jrd/gds_proto.h source/jrd/isc_proto.h
+inet_server.o:	inet_server.c remote.h \
+		allr_proto.h inet_proto.h serve_proto.h \
+		source/jrd/license.h source/jrd/thd.h \
+		source/jrd/gds_proto.h
+interface.o:	interface.c remote.h source/jrd/ibsetjmp.h \
+		inet_proto.h inter_proto.h merge_proto.h parse_proto.h \
+		remot_proto.h \
+		source/jrd/thd.h source/jrd/license.h \
+		source/jrd/cvt_proto.h source/jrd/enc_proto.h \
+		source/jrd/gds_proto.h source/jrd/isc_f_proto.h \
+		source/jrd/sdl_proto.h
+ipc.o:		ipc.c remote.h ipc.h source/jrd/thd.h
+ipc_server.o:	ipc_server.c remote.h ipc.h source/jrd/license.h
+merge.o:	merge.c remote.h \
+		allr_proto.h merge_proto.h \
+		source/jrd/gds_proto.h
+mgr.o:		mgr.c remote.h source/jrd/license.h
+mslan.o:	mslan.c remote.h lanentry.h source/jrd/thd.h
+mslansrv.o:	mslansrv.c remote.h lanman.h source/jrd/license.h
+nt_server.o:	nt_server.c remote.h source/jrd/license.h source/jrd/thd.h
+parser.o:	parser.c remote.h \
+		allr_proto.h parse_proto.h \
+		source/jrd/align.h
+protocol.o:	protocol.c remote.h \
+		allr_proto.h parse_proto.h proto_proto.h remot_proto.h \
+		source/jrd/sdl.h \
+		source/jrd/gds_proto.h source/jrd/sdl_proto.h
+remote.h:	protocol.h blk.h xdr.h allr_proto.h \
+		source/jrd/dsc.h source/jrd/thd.h
+	$(TOUCH) remote.h
+remote.o:	remote.c remote.h allr_proto.h remot_proto.h \
+		source/jrd/gds_proto.h
+server.o:	server.c remote.h source/jrd/ibsetjmp.h \
+		allr_proto.h merge_proto.h parse_proto.h remot_proto.h \
+		serve_proto.h \
+		source/jrd/thd.h  source/jrd/isc.h source/jrd/license.h \
+		source/jrd/gds_proto.h source/jrd/isc_proto.h \
+		source/jrd/sch_proto.h \
+		source/jrd/thd_proto.h
+xdr.h:		types.h in.h
+	$(TOUCH) xdr.h
+winvx.o:	winvx.c types.h in.h
+wnet.o:		wnet.c remote.h source/jrd/license.h source/jrd/thd.h
+xdr.o:		xdr.c xdr.h
+
+$(GDSSHR) $(GDSLIB_BACKEND) $(SUPER_BACKEND) $(JRD_LINK): force
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+
+# This target just forces those who depend on it, to execute their actions
+force:
+	$(ECHO) force
+
+# .j objects are a special SOLARIS make
+merge.j:	merge.o
+
+# This entry is used to programatically update the include file dependencies 
+# for all *.c files in the current directory.
+#
+# Note that it is specific to Solaris by using the -xM1 compiler option.
+# This option has CC generate dependency lines for the makefile - but
+# does not generate object files.
+# It is likely that a similar option exists on other platforms.
+#
+# It is recommended that depends.mak be created on a platform
+# that supports such an option.  depends.mak is not platform dependent, it uses
+# the standard makefile output format, as can be copied to platforms
+# that don't have a -xM1 feature in the c compiler.
+#
+depends.mak:
+	-$(RM) depends.out
+	-$(CC) $(CFLAGS) -xM1 *.c 1>&2 > depends.out
+	-$(RM) depends.mak
+	$(ECHO) "# depends.mak - remote"                         > depends.mak
+	$(ECHO) "# Created by 'make depends.mak'"               >> depends.mak
+	date "+# Created on %Y-%m-%d"                           >> depends.mak
+	sed -e "s:source/[a-z/]*/source:source:g" -e "s:source/remote/::g"\
+		depends.out |sort|uniq > depends.out.1
+	-$(CAT) depends.out.1 >> depends.mak
+	sed -e "s:\.o\::\.bin\::g" depends.out.1 >> depends.mak
+	-$(RM) depends.out depends.out.1
+
+# In the event that a platform does not support the make directive "include" - 
+# concatenate "depends.mak" with the makefile.
+#
+include depends.mak
+

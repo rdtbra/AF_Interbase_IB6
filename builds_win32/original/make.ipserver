@@ -1,0 +1,47 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#------------------------------ IPSERVER MAKEFILE ------------------------------
+#	This makefile builds both the client and server objects.  The define
+#	CLIENT is used to determine which objects to build.
+#
+#		IPSERVER_FILES = list of JRD files to build the given library
+#	
+#	The rule 'ipserver.rsp' is an alias for the version specific
+#	ipserver.rsp and is the rule to use to build object files.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+!ifdef CLIENT
+IPSERVER_FILES=	alli.c ipclient.c ipcevent.c 
+!else
+IPSERVER_FILES=	alli.c ipserver.c
+!endif
+
+IPSERVER_OBJS=       $(IPSERVER_FILES:.c=.obj)
+
+ipserver.rsp:	$(.path.obj)\ipserver.rsp
+
+$(.path.obj)\ipserver.rsp:      $(IPSERVER_OBJS)
+	$(RM) $(.path.obj)\ipserver.rsp
+	&echo $(ROOT)\ipserver\$** >> $(.path.obj)\ipserver.rsp
+
+ipcevent.obj:	ipcevent.c
+	$(CC) $(VERSION_CFLAGS) -c $(O_OBJ_SWITCH)$(.path.obj)\ -DWIN32_LEAN_AND_MEAN ipcevent.c
+

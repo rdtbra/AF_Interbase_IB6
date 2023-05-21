@@ -1,0 +1,220 @@
+update_guide:	procedure options (main);
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+
+ /*
+ * It's time to update and print the tourist information we have for New
+ * England and the Pacific Northwest.  This program first prints and
+ * optionally modifies the tourist information for each state, then creates 
+ * a database that is a guide to Northern US seacoasts.
+ */
+
+database atlas = filename 'atlas.gdb';
+database guide = filename 'c_guide.gdb';
+
+%replace	ss$normal by 1;
+declare 	state_count fixed binary static readonly initial ('08'B4);
+declare		state_list (8) character (12) static readonly initial
+			('ME', 'NH', 'MA', 'RI', 'CT', 'OR', 'WA', 'AK');
+
+declare 	lib$get_input ENTRY 
+			(character (*), character (*), fixed binary (15))
+			options (variable) returns (fixed binary (31));
+
+clean_up :	procedure;
+
+/**************************************
+ *
+ *   c l e a n _ u p
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ * At the users' choice, edit the tourism blob 
+ * for selected states, load a new one from a named 
+ * file, or accept text from standard input
+ **************************************/
+
+declare	filename	character (40),
+	choice		character (1),
+	i		fixed binary,
+	update_tr	pointer,
+	str_length	fixed binary (15),
+	stat		fixed binary (31);
+
+based on atlas.states.state	state;
+ 
+
+/* start a named transaction for update, reserving the necessary relations */
+
+update_tr = null();
+start_transaction update_tr concurrency read_write 
+	reserving atlas.tourism for write,
+	atlas.states for read;
+
+do i = 1 to state_count ;
+	state = state_list (i); 
+	for (transaction_handle update_tr) s in atlas.states 
+		cross t in atlas.tourism over state with s.state = state
+		put list ('Here''s the information on ', s.state_name) skip;
+		call blob__display (t.guidebook, atlas, update_tr, 
+			'guide_book', length ('guidebook'));
+		stat = lib$get_input (choice, 
+                	'Is this information up to date? (Y/N) ');
+		if ((choice ~= 'y') & (choice ~= 'Y')) then 
+		modify t using
+			stat = lib$get_input (choice,
+ 	'Enter F to update from a file, E to edit the description ');
+			if ((choice = 'F') | (choice = 'f')) then
+			do;
+				stat = lib$get_input (filename,
+					'Enter full name of input file ',
+					str_length);
+				call blob__load (t.guidebook, atlas, update_tr, filename, 
+					str_length);
+			end;
+			else if ((choice = 'E') | (choice  = 'e')) then
+				call blob__edit (t.guidebook, atlas, update_tr, 'guidebook',
+					length ('guidebook'));
+			else
+			do;
+				PUT LIST 
+			('Enter new information from standard input.  ');
+          			PUT LIST ('Terminate with <EOF>.') SKIP;
+				create_blob new in t.guidebook;
+				stat = ss$normal;
+				do while (stat = ss$normal);
+					stat = lib$get_input (new.segment,
+						' ', new.length);
+ 					put_segment new;
+				end;
+				close_blob new;
+			end;
+		end_modify;
+	end_for;
+end;
+commit update_tr;
+end clean_up;
+
+
+
+
+transfer_data	: procedure ;
+
+/**************************************
+ *
+ *   t r a n s f e r _ d a t a
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ * Move the tourism information for selected
+ * states to the guide_book database.
+ **************************************/
+
+declare	trans_tr	pointer,
+	i		binary;	
+based on atlas.states.state	state;
+
+trans_tr = null ();
+
+start_transaction trans_tr concurrency read_write
+	reserving atlas.tourism for read,
+	guide.tourism for write;
+
+do i = 1 to state_count;
+	for (transaction_handle trans_tr) s in atlas.states 
+		cross t in atlas.tourism 
+		over state with s.state = state_list(i)
+		do;
+		store (transaction_handle trans_tr) new 
+				in guide.tourism using
+			new.state_name = s.state_name;
+			new.state = s.state;
+			new.city = t.city;
+          		new.zip = t.zip; 
+
+			/* One way to copy a blob */
+			create_blob n_addr in new.office;
+			for o_addr in t.office
+				n_addr.segment = o_addr.segment;
+				n_addr.length = o_addr.length;
+				put_segment n_addr;
+			end_for;
+			close_blob n_addr;
+
+			/* another way to copy a blob */
+			call blob__dump (t.guidebook, atlas, trans_tr, 
+					'temp.tmp', length ('temp.tmp'));
+			call blob__load (new.guidebook, guide, trans_tr, 
+					'temp.tmp', length ('temp.tmp'));
+		end_store;
+ 		end;
+	end_for;
+	end;
+
+prepare trans_tr
+	on_error
+		PUT LIST ('Error preparing a multi_database transaction')
+			SKIP;
+		PUT LIST 
+	('Please manually rollback limbo transactions in GUIDE and ATLAS')
+			SKIP;
+		rollback trans_tr;
+	end_error;
+
+if (trans_tr ~= null()) then
+	commit trans_tr
+		on_error
+			PUT LIST 
+	('Error committing a prepared multi_database transaction') SKIP;
+			PUT LIST 
+	('Please manually commit limbo transactions in GUIDE and ATLAS') SKIP;
+		end_error;
+end  transfer_data;
+
+begin;
+/**************************************
+ *
+ *   m a i n
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ * The main routine establishes a list of
+ * states from the main atlas database.  Its
+ * subroutines allow the user to update guidebook 
+ * descriptions of those states, and store them
+ * in a separate database.
+ **************************************/
+
+
+ready atlas;
+ready  'nc_guide.gdb' as guide;
+
+call clean_up;
+call transfer_data;
+
+finish atlas;
+finish guide;
+end;
+end update_guide;

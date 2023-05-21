@@ -1,0 +1,56 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- EXTLIB MAKEFILE ---------------------------------
+#       This makefile builds the external libraries, currently that is a UDF. 
+
+!include ..\include.mak
+
+BC_IMPLIB=implib
+
+ib_udf.obj: ib_udf.c
+	$(CC) -c $(VENDOR_CFLAGS) $(VERSION_CFLAGS) ib_udf.c 
+
+ib_udf.dll: ib_udf.obj	 
+	$(IMPLIB) -out:$(.path.obj)\ib_udf_tmp.lib @&&!
+$**
+!
+	$(IMPLIB) -out:$(.path.obj)\ib_udf.lib -def:ib_udf.bind $(.path.obj)\ib_udf_tmp.lib
+	$(ECHO) $(ROOT)\jrd\$(.path.obj)\version_95.res > extlib.rsp 
+	$(ECHO) $(ROOT)\extlib\$(.path.obj)\ib_util_ms.lib >> extlib.rsp
+	$(ECHO) $(LINK_OPTS) -out:$(.path.obj)\ib_udf.dll >> extlib.rsp
+	$(ECHO) -dll -entry:_CRT_INIT$(DLLENTRY) >> extlib.rsp
+	$(ECHO) $(.path.obj)\ib_udf_tmp.lib $(.path.obj)\ib_udf.exp $(CONLIBSDLL) >> extlib.rsp
+	$(LINK) @extlib.rsp
+	$(RM) extlib.rsp
+	$(RM) $(.path.obj)\ib_udf_tmp.lib
+	$(RM) $(.path.obj)\ib_udf.exp
+
+ib_util.obj: ib_util.c
+	$(CC) -c $(VENDOR_CFLAGS) $(VERSION_CFLAGS) ib_util.c 
+
+ib_util.dll: ib_util.obj	 
+	$(IMPLIB) -out:$(.path.obj)\ib_util_tmp.lib @&&!
+$**
+!
+	$(IMPLIB) -out:$(.path.obj)\ib_util_ms.lib -def:ib_util.bind $(.path.obj)\ib_util_tmp.lib
+	$(LINK) $(ROOT)\jrd\$(.path.obj)\version_95.res $(LINK_OPTS) -out:$(.path.obj)\ib_util.dll @&&!
+-dll -entry:_CRT_INIT$(DLLENTRY) 
+$(.path.obj)\ib_util_tmp.lib $(.path.obj)\ib_util_ms.exp $(CONLIBSDLL)
+!
+	$(RM) $(.path.obj)\ib_util_tmp.lib
+	$(RM) $(.path.obj)\ib_util_ms.exp
+	$(BC_IMPLIB) $(.path.obj)\ib_util.lib $(.path.obj)\ib_util.dll

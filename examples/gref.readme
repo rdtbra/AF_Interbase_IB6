@@ -1,0 +1,55 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+                        gref.e - Interbase EXAMPLE Xref Program
+
+NOTE:  gref.e source is the property of Interbase Software, Inc. BUT 
+       Interbase WILL NOT support the program if the code has been
+       modified by third parties.  Also, questions on the makeup and 
+       flow of the program are not covered under normal support
+       agreements.
+
+1) Copy atlas.gdb from the Interbase examples directory into the current directory.
+
+2) Preprocess, compile and link as appropriate to your platform.
+
+3) To run type:
+
+        gref -d expenses.gdb
+		(This will Xref the whole expenses.gdb database)
+
+	OR
+
+	gref -d expenses.gdb -f cost_amount
+		(This will Xref only the field cost_amount in the database expenses.gdb)
+
+	OR
+
+	gref
+                (The program will prompt for the database)
+
+        Switches:
+
+                -d : target database pathname
+
+                -f : field name (if you want to xref only this field)
+
+		-h : prints out syntax help 
+
+		-z : Version of Interbase Access Method
+

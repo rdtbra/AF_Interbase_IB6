@@ -1,0 +1,122 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- UTILITIES MAKEFILE ---------------------------------
+#       This makefile builds the objects needed for gsec, cache_print,
+#       dba (gstat), instsvc, instreg and rebuild (gfix) utilities.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+!include ..\include.mak
+
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=    security.c
+
+ISC_LINK=       $(ROOT)\jrd\$(.path.obj)\isc.obj
+ISC_FILE_LINK=  $(ROOT)\jrd\$(.path.obj)\isc_file.obj
+ISC_SYNC_LINK=  $(ROOT)\jrd\$(.path.obj)\isc_sync.obj
+ENC_LINK=       $(ROOT)\jrd\$(.path.obj)\enc.obj
+JRD_LINK2=      $(ISC_LINK) $(ISC_FILE_LINK) $(ISC_SYNC_LINK)
+DMP_LINK=       $(ROOT)\jrd\$(.path.obj)\dmp.obj
+
+#-----------------------------------------------------------------------------
+
+UTILITY_OBJS=       $(DOT_E_FILES:.c=.obj) gsec.obj cmd_util.obj
+DBA_OBJS=	    dba.obj ppg.obj
+
+utilities.rsp:	$(.path.obj)\utilities.rsp
+
+$(.path.obj)\utilities.rsp:      $(UTILITY_OBJS) $(DBA_OBJS)
+	$(RM) $(.path.obj)\utilities.rsp
+	&echo $(ROOT)\utilities\$** >> $(.path.obj)\utilities.rsp
+
+gsec.exe:       gsec.obj security.obj $(ENC_LINK) $(ISC_LINK)
+	-$(RM) gsec.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\gsec
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB) USER32.LIB
+$(VER_RES_LINK)
+!
+	$(TOUCH) gsec.exe
+
+ibmgr.exe:       ibmgr.obj srvrmgr.obj
+	-$(RM) ibmgr.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\ibmgr
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB) 
+$(VER_RES_LINK)
+!
+	$(TOUCH) ibmgr.exe
+
+print_pool.exe:       print_pool.obj 
+	-$(RM) print_pool.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\print_pool
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) print_pool.exe
+
+cache_print.exe:        sbc_print.obj ppg.obj $(JRD_LINK2)
+	-$(RM) cache_print.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\cache_print
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB) $(MPRLIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) cache_print.exe
+
+dba.exe:        dba.obj ppg.obj
+	-$(RM) dba.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\dba $(ENC_LINK)
+$(SHRLIB_LINK) $(CONLIBSDLL) USER32.LIB
+$(VER_RES_LINK)
+!
+	$(TOUCH) dba.exe
+
+install_reg.exe:        install_reg.obj registry.obj
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\install_reg
+$(CONLIBSDLL) $(ADVAPILIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) install_reg.exe
+
+install_svc.exe:        install_svc.obj services.obj
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\install_svc
+$(CONLIBSDLL) $(ADVAPILIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) install_svc.exe
+
+rebuild.exe:            rebuild.obj rstore.obj rmet.obj $(DMP_LINK)
+	-$(RM) rebuild.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\rebuild $(GDSSHR_LINK)
+$(CONLIBSDLL) $(ADVAPILIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) rebuild.exe
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif

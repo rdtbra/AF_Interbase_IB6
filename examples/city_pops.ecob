@@ -1,0 +1,123 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CITYPOPS.
+*
+* The contents of this file are subject to the Interbase Public
+* License Version 1.0 (the "License"); you may not use this file
+* except in compliance with the License. You may obtain a copy
+* of the License at http://www.Inprise.com/IPL.html
+*
+* Software distributed under the License is distributed on an
+* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+* or implied. See the License for the specific language governing
+* rights and limitations under the License.
+*
+* The Original Code was created by Inprise Corporation
+* and its predecessors. Portions created by Inprise Corporation are
+* Copyright (C) Inprise Corporation.
+*
+* All Rights Reserved.
+* Contributor(s): ______________________________________.
+*
+
+       ENVIRONMENT DIVISION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+           DATABASE DB1 = FILENAME 'atlas.gdb'
+
+       01  ANSWER PIC X.
+       01  FOUND PIC S9(4) USAGE COMP.
+       01  DONE PIC S9(4) USAGE COMP.
+
+       PROCEDURE DIVISION.
+       MAIN-ROUTINE.
+
+      * Create forms window *
+
+           MOVE 20 TO gds-height
+           MOVE 80 TO gds-width
+           CREATE_WINDOW
+
+      * Open database and start transaction *
+           READY.
+
+           START_TRANSACTION.
+
+      * Loop until user leaves form without filling in a state code *
+           MOVE 1 TO FOUND
+           MOVE 0 TO DONE
+           PERFORM UNTIL DONE = 1
+              FOR FORM F IN CITY_POPULATIONS
+
+      *          Set instructional message to be displayed in form.
+      *          If user just entered state code for a non-existant state,
+      *          say so in the message. 
+                 IF FOUND = 1 THEN
+                    MOVE 'Enter State Code (enter nothing to exit)'
+		       TO F.TAG
+                    MOVE 0 TO FOUND
+                 ELSE
+                    MOVE
+           'State not found; Enter State Code (enter nothing to exit)'
+		       TO F.TAG
+                 END-IF
+      *          Display form and await entering of state code *
+                 DISPLAY F DISPLAYING TAG ACCEPTING STATE
+                 IF F.STATE.STATE = 1 THEN
+                    MOVE 1 TO DONE
+                 ELSE
+      *             Look for state *
+                    FOR S IN STATES WITH S.STATE = F.STATE
+
+      *                Note that state was found *
+                       MOVE 1 TO FOUND
+
+      *                Put city information into subform *
+                       FOR C IN CITIES WITH C.STATE = S.STATE
+                             SORTED BY C.CITY
+                          PUT_ITEM FC IN F.CITY_POP_LINE
+                             MOVE C.CITY TO FC.CITY
+                             MOVE C.POPULATION TO FC.POPULATION
+                          END_ITEM
+                       END_FOR
+
+      *                Put state information into form *
+                       MOVE S.STATE TO F.STATE
+                       MOVE S.STATE_NAME TO F.STATE_NAME
+                       MOVE 'Update populations if needed' TO F.TAG
+
+      *                Display current form and allow populations
+      *                to be updated *
+                       DISPLAY F DISPLAYING STATE, STATE_NAME,
+                          CITY_POP_LINE.CITY, CITY_POP_LINE.POPULATION,
+                          TAG ACCEPTING CITY_POP_LINE.POPULATION
+
+      *                Perform modifications for any updated populations *
+                       FOR_ITEM FC IN F.CITY_POP_LINE
+                          IF FC.POPULATION.STATE = 4 THEN
+                             FOR C IN CITIES WITH C.CITY = FC.CITY AND
+                                   C.STATE = F.STATE
+                                MODIFY C USING
+                                   MOVE FC.POPULATION TO C.POPULATION
+                                END_MODIFY
+                             END_FOR
+                          END-IF
+                       END_ITEM
+                    END_FOR
+                 END-IF
+              END_FORM
+           END-PERFORM.
+
+      *    Make form go away *
+           DELETE_WINDOW.
+
+      *    Check to see whether or not to commit updates *
+           DISPLAY 'Do you want to commit the updates (Y/N): '.
+           ACCEPT ANSWER
+           IF ((answer = 'Y') OR (answer = 'y')) THEN
+              COMMIT
+           ELSE
+              ROLLBACK.
+
+      *    Close down *
+           FINISH.
+           STOP RUN.

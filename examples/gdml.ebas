@@ -1,0 +1,216 @@
+10	%TITLE "UPDATE_GUIDE"
+!  The contents of this file are subject to the Interbase Public
+!  License Version 1.0 (the "License"); you may not use this file
+!  except in compliance with the License. You may obtain a copy
+!  of the License at http://www.Inprise.com/IPL.html
+!
+!  Software distributed under the License is distributed on an
+!  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+!  or implied. See the License for the specific language governing
+!  rights and limitations under the License.
+!
+!  The Original Code was created by Inprise Corporation
+!  and its predecessors. Portions created by Inprise Corporation are
+!  Copyright (C) Inprise Corporation.
+!
+!  All Rights Reserved.
+!  Contributor(s): ______________________________________.
+
+	DECLARE LONG CONSTANT STATE_COUNT = 8
+	DECLARE STRING STATE_LIST (STATE_COUNT)
+	DATA  'ME', 'NH', 'MA', 'RI', 'CT', 'OR', 'WA', 'AK', 'XX'
+	DECLARE LONG I
+
+
+	!  It's time to update and print the tourist information we have 
+	!  for New England and the Pacific Northwest.  This program  
+	!  prints and optionally modifies the tourist information for 
+	!  each state, then creates a database that is a guide to 
+	!  northern US seacoasts. 
+
+	DATABASE ATLAS = FILENAME 'atlas.gdb'
+	DATABASE GUIDE = FILENAME 'c_guide.gdb'
+
+	! ************************************** 
+	! *
+	! *   M A I N 
+	! * 
+	! ************************************** 
+	! * 
+	! * Functional description 
+	! * 
+	! * The main routine establishes a list of states from the main 
+	! * atlas database.  Its subroutines allow the user to update 
+	! * guidebook descriptions of those states, and store them in 
+	! * a separate database.
+	! ************************************** 
+
+20	MAT READ STATE_LIST
+30	READY ATLAS 
+        READY 'nc_guide.gdb' AS GUIDE
+40	CALL CLEAN_UP (STATE_LIST (), STATE_COUNT)
+50	CALL TRANSFER_DATA (STATE_LIST (), STATE_COUNT)
+60	FINISH ATLAS
+        FINISH GUIDE
+99	END
+
+100	SUB CLEAN_UP (STRING STATES_LIST (), LONG STATE_COUNT)
+
+	EXTERNAL LONG CONSTANT SS$_NORMAL
+	EXTERNAL LONG FUNCTION LIB$GET_INPUT ( STRING BY DESC, &
+			WORD BY VALUE, WORD BY REF)
+	DECLARE STRING	FILENAME, CHOICE 
+	DECLARE LONG	I, UPDATE_TR, STAT
+	DECLARE STRING	STATE
+	DECLARE WORD	STRING_SIZE 
+
+	DATABASE ATLAS = FILENAME 'atlas.gdb' 
+
+	! **************************************
+	! * 
+	! *    c l e a n _ u p 
+	! * 
+	! **************************************
+	! * 
+	! * Functional description 
+	! * 
+	! * At the users' choice, edit the tourism blob for selected  
+	! * states, load a new one from a named file, or accept text 
+	! * from standard input 
+	! ************************************** 
+
+	! start a named transaction for update, reserving the necessary 
+	! relations 
+
+110	UPDATE_TR = 0
+120	START_TRANSACTION UPDATE_TR CONCURRENCY READ_WRITE RESERVING
+		ATLAS.TOURISM FOR WRITE,
+		ATLAS.STATES FOR READ
+
+130	FOR I = 1 TO STATE_COUNT
+135		FOR (TRANSACTION_HANDLE UPDATE_TR) S IN STATES 
+			CROSS T IN TOURISM OVER STATE WITH S.STATE = STATES_LIST (I)
+140			PRINT "Here's the information on "; S.STATE_NAME
+145			CALL BLOB__DISPLAY (T.GUIDEBOOK, ATLAS, UPDATE_TR, &
+				'GUIDEBOOK',  LEN ('GUIDEBOOK'))
+
+150			INPUT "Is this information up to date (Y/N)"; CHOICE
+160			IF (CHOICE <> 'Y') AND (CHOICE <> 'y') THEN 
+				MODIFY T USING
+				INPUT &
+		"Where should input come from (F for file / E for editor)"; &
+					CHOICE
+				IF (CHOICE = 'F') OR (CHOICE = 'f') THEN
+					INPUT &
+					'What is the input file name'; &
+						FILENAME
+					CALL BLOB__LOAD BY REF (T.GUIDEBOOK, &
+						ATLAS, UPDATE_TR, &
+						FILENAME, LEN (FILENAME))
+ 				ELSE IF (CHOICE = 'E' OR CHOICE = 'e') THEN
+					CALL BLOB__EDIT BY REF (T.GUIDEBOOK, &
+						ATLAS, UPDATE_TR, &
+						'GUIDEBOOK', &
+						LEN ('GUIDEBOOK'))
+				ELSE
+					PRINT  &
+	"Enter new information from standard input. Terminate with <EOF>."
+					CREATE_BLOB NEW IN T.GUIDEBOOK
+					STAT = LIB$GET_INPUT ( &
+						NEW.SEGMENT BY DESC, &
+						0 BY VALUE, &
+						STRING_SIZE BY REF)
+					WHILE STAT = SS$_NORMAL
+						NEW.LENGTH = STRING_SIZE
+						PUT_SEGMENT NEW
+						STAT = LIB$GET_INPUT ( &
+							NEW.SEGMENT BY DESC, &
+							0 BY VALUE, &
+							STRING_SIZE BY REF)
+					NEXT
+					CLOSE_BLOB NEW
+				END IF	! if choice = e
+				END IF	! if choice = f
+			END_MODIFY
+		END IF ! if we modified the field
+		END_FOR
+	NEXT I
+
+190	COMMIT UPDATE_TR
+199	SUBEND
+
+
+200	SUB TRANSFER_DATA (STRING STATES_LIST (), LONG STATE_COUNT)
+
+	DECLARE LONG	I, TRANS_TR
+	DECLARE STRING	STATE
+
+	DATABASE ATLAS = FILENAME 'atlas.gdb' 
+	DATABASE GUIDE = FILENAME 'c_guide.gdb'
+
+
+
+	! **************************************
+	! *
+	! *   t r a n s f e r _ d a t a
+	! *
+	! **************************************
+	! *
+	! * Functional description
+	! *
+	! * Move the tourism information for selected
+	! * states to the guide_book database.
+	! **************************************
+
+210	TRANS_TR = 0
+
+220	START_TRANSACTION TRANS_TR CONCURRENCY READ_WRITE RESERVING
+		ATLAS.TOURISM FOR READ,
+		GUIDE.TOURISM FOR WRITE
+
+230 	FOR I = 1 TO STATE_COUNT
+		STATE = STATES_LIST(I)
+		FOR (TRANSACTION_HANDLE TRANS_TR) S IN ATLAS.STATES 
+			CROSS T IN ATLAS.TOURISM OVER STATE WITH S.STATE = STATE
+			STORE (TRANSACTION_HANDLE TRANS_TR) NEW 
+					IN GUIDE.TOURISM USING
+				NEW.STATE_NAME = S.STATE_NAME
+				NEW.STATE = S.STATE
+				NEW.CITY = T.CITY
+				NEW.ZIP = T.ZIP 
+		! One way to copy a blob 
+				CREATE_BLOB N_ADDR IN NEW.OFFICE
+				FOR O_ADDR IN T.OFFICE
+					N_ADDR.SEGMENT = O_ADDR.SEGMENT
+					N_ADDR.LENGTH = O_ADDR.LENGTH
+					PUT_SEGMENT N_ADDR
+				END_FOR
+				CLOSE_BLOB N_ADDR
+
+		! another way to copy a blob 
+				CALL BLOB__DUMP BY REF (T.GUIDEBOOK, ATLAS, &
+					TRANS_TR, 'TEMP.TMP', LEN ('TEMP.TMP'))
+				CALL BLOB__LOAD BY REF (NEW.GUIDEBOOK, GUIDE, &
+					TRANS_TR, 'TEMP.TMP', LEN('TEMP.TMP'))
+			END_STORE
+		END_FOR
+	NEXT I
+240	PREPARE TRANS_TR
+		ON_ERROR
+			call gds__print_status (gds__status)
+			PRINT 'Error preparing a multi_database transaction'
+			PRINT &
+	'Please manually rollback limbo transactions in GUIDE and ATLAS'
+			ROLLBACK TRANS_TR
+			EXIT SUB
+		END_ERROR
+
+
+250	COMMIT TRANS_TR
+		ON_ERROR
+			PRINT &
+	'Error committing a prepared multi_database transaction'
+			PRINT &
+	'Please manually commit limbo transactions in GUIDE and ATLAS'
+		END_ERROR
+260	SUBEND

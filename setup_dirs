@@ -1,0 +1,344 @@
+#!/bin/sh
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# Shell script to set up the InterBase directory structure
+# And now the super server directory structure  
+
+if [ $# != 3 ]; then
+    echo 'Usage: setup_dirs {AIX   | AP      | AX   } {DEV}  master_source_dir '
+    	echo '                  {DELTA | DG      | EPSON} {PROD}'
+    	echo '                  {HP700 | HP800   | HP9.0 | HP10 }'
+    	echo '                  {IMP   | MU      | SCO  }'
+    	echo '                  {SGI   | SOLARIS | SUN4 }'
+    	echo '                  {UNIXWARE | AIX_PPC | LINUX }'
+    	exit 1
+fi
+
+SYS_TYPE=$1
+if [ "$1" = 'SUN4' -o "$1" = 'SUN3_4' -o "$1" = 'SUN386I' ]; then
+    SYS_TYPE=SUNOS4
+fi
+if [ $1 = 'AX' -o $1 = 'AP' ]; then
+    SYS_TYPE=APOLLO
+fi
+if [ $1 = 'SUN3_3' ]; then
+    SYS_TYPE=SUNOS3
+fi
+#
+LOCK_HEADER=lock_header_shmem
+if [ $SYS_TYPE = 'SUNOS4' -o $1 = 'DG' -o $1 = 'SOLARIS' ]; then
+    LOCK_HEADER=lock_header_mmap
+fi
+#
+	echo "Setting up the directory structure, "
+	echo "creating links "
+	echo "and generating makefiles "
+
+mkdir super
+mkdir super/alice
+mkdir super/burp
+mkdir super/client
+mkdir super/dsql
+mkdir super/intl
+mkdir super/journal
+mkdir super/jrd
+mkdir super/lock
+mkdir super/register
+mkdir super/remote
+mkdir super/utilities
+mkdir super/wal
+
+# Now populate the directories super/* with symlinks to all the source
+# files contained in the corresponding top-level directories.
+
+for dir in alice burp dsql intl journal jrd lock register remote utilities wal
+do
+    cd super/$dir
+    ln -s ../../$dir/[a-z]* .
+    cd ../..
+done
+
+#
+ln -s . source
+ln -s builds/make.interbase make_kit
+ln -s builds/original/build_kit build_kit
+ln -s builds/original/set_prot set_prot
+ln -s builds/original/unset_prot unset_prot
+ln -s builds/original/add_template add_template
+ln -s builds/original/mpm_template mpm_template
+ln -s builds/original/mpp_template mpp_template
+ln -s builds/original/put_template put_template
+ln -s builds/original/fetch_comp fetch_comp
+ln -s builds/original/maketar maketar
+ln -s builds/refresh refresh
+ln -s builds/refresh.all refresh.all
+ln -s builds/special_opt special_opt
+if [ $1 = 'SCO' ]; then
+    ln -s builds/original/sco_ship sco_ship
+fi
+# Alice
+ln -s .. alice/source
+ln -s source/jrd/yachts.gdb alice/yachts.lnk
+ln -s source/builds/make.alice alice/makefile
+ln -s .. super/alice/source
+ln -s source/jrd/yachts.gdb super/alice/yachts.lnk
+ln -s source/builds/make.alice_ss super/alice/makefile
+# Burp
+ln -s .. burp/source
+ln -s source/jrd/yachts.gdb burp/yachts.lnk
+ln -s source/builds/make.burp burp/makefile
+ln -s .. super/burp/source
+ln -s source/jrd/yachts.gdb super/burp/yachts.lnk
+ln -s source/builds/make.burp_ss super/burp/makefile
+# Client
+ln -s .. super/client/source
+ln -s source/builds/make.client super/client/makefile
+# Csv
+ln -s .. csv/source
+ln -s source/builds/make.csv csv/makefile
+# Dsql
+ln -s .. dsql/source
+ln -s source/jrd/yachts.gdb dsql/yachts.lnk
+ln -s source/builds/make.dsql dsql/makefile
+ln -s .. super/dsql/source
+ln -s source/jrd/yachts.gdb super/dsql/yachts.lnk
+ln -s source/builds/make.dsql_ss super/dsql/makefile
+# Dudley
+ln -s .. dudley/source
+ln -s source/jrd/yachts.gdb dudley/yachts.lnk
+ln -s source/builds/make.dudley dudley/makefile
+# V3 Examples
+ln -s .. examples/source
+ln -s $3/examples/atlas.gdb examples/atlas.gdb
+ln -s $3/examples/c_guide.gdb examples/c_guide.gdb
+ln -s $3/examples/emp.gdb examples/emp.gdb
+ln -s $3/examples/nc_guide.gdb examples/nc_guide.gdb
+ln -s $3/examples/slides.gdb examples/slides.gdb
+ln -s $3/examples/stocks.gdb examples/stocks.gdb
+ln -s source/builds/make.examples examples/makefile
+# V4 Examples
+ln -s .. example4/source
+ln -s source/builds/make.example4 example4/makefile
+ln -s $3/example4/empbuild.gdb example4/empbuild.gdb
+# V5 Examples
+ln -s .. example5/source
+ln -s source/builds/make.example5 example5/makefile
+ln -s $3/example5/empbuild.gdb example5/empbuild.gdb
+# ExtLib
+ln -s .. extlib/source
+ln -s source/builds/make.extlib extlib/makefile
+# Gpre
+ln -s .. gpre/source
+ln -s source/jrd/yachts.gdb gpre/yachts.lnk
+ln -s source/builds/make.gpre gpre/makefile
+# Intl
+ln -s .. intl/source
+ln -s source/builds/make.intl intl/makefile
+ln -s .. super/intl/source
+ln -s source/builds/make.intl_ss super/intl/makefile
+# Isql
+ln -s .. isql/source
+ln -s source/jrd/yachts.gdb isql/yachts.lnk
+ln -s source/builds/make.isql isql/makefile
+# Journal
+ln -s .. journal/source
+ln -s $3/journal/journal.gdb journal/journal.gdb
+ln -s $3/journal/journal_vms.gdb journal/journal_vms.gdb
+ln -s source/builds/make.journal journal/makefile
+ln -s .. super/journal/source
+ln -s $3/journal/journal.gdb super/journal/journal.gdb
+ln -s source/builds/make.journal_ss super/journal/makefile
+# Jrd
+ln -s .. jrd/source
+ln -s yachts.gdb jrd/yachts.lnk
+ln -s source/msgs/master_msg_db jrd/msg.gdb
+ln -s $3/jrd/yachts.gdb jrd/yachts.gdb
+ln -s $3/jrd/isc.gdb jrd/isc.gdb
+ln -s source/builds/make.jrd jrd/makefile
+ln -s source/pipe/allp.c jrd/allp.c
+ln -s source/pipe/foot.c jrd/foot.c
+ln -s source/pipe/head.c jrd/head.c
+ln -s .. super/jrd/source
+ln -s yachts.gdb super/jrd/yachts.lnk
+ln -s $3/jrd/yachts.gdb super/jrd/yachts.gdb
+ln -s $3/jrd/isc.gdb super/jrd/isc.gdb
+ln -s gds_ss.a super/jrd/libgds_ss.a
+ln -s $3/msgs/msg.gdb super/jrd/msg.gdb
+ln -s source/builds/make.jrd_ss super/jrd/makefile
+ln -s source/builds/original/bind_dsql.apollo dsql/bind_dsql
+ln -s source/builds/original/bind_gdslib.apollo jrd/bind_gdslib
+ln -s source/builds/original/bind_gds5.apollo jrd/bind_bridge
+ln -s source/builds/original/bind_pyxis.apollo pyxis/bind_pyxis
+ln -s source/builds/original/bind_csilib.apollo csv/bind_csilib
+ln -s source/builds/original/bind_remotelib.apollo remote/bind_remotelib
+if [ $1 = 'DELTA' -o $1 = 'IMP' -o $1 = 'MU' -o $1 = 'NXT' -o $1 = 'SCO' -o $1 = 'UL' ]; then
+    ln -s source/interbase/lib/gds_b.a jrd/libgds_b.a
+else
+    ln -s gds_b.a jrd/libgds_b.a
+fi
+if [ $SYS_TYPE = 'SUNOS4' ]; then
+    ln -s source/interbase/lib/gdslib.so.1.0 jrd/libgdslib.so.1.0
+    ln -s source/interbase/lib/gdslib.so.0.1 jrd/libgdslib.so.0.1
+    ln -s source/interbase/lib/gdsflib.so.0.0 jrd/libgdsflib.so.0.0
+    ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+fi
+if [ $SYS_TYPE = 'LINUX' ]; then
+    ln -s source/interbase/lib/gds.so jrd/libgds.so
+    ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+fi
+if [ $1 = 'AIX' -o $1 = 'AIX_PPC' -o $1 = 'DECOSF' -o $1 = 'SGI' ]; then
+    ln -s source/builds/original/bind_gds.generic jrd/gds.bind
+    ln -s source/builds/original/bind_gds5.generic jrd/gds5.bind
+fi
+if [ $1 = 'AIX' -o $1 = 'AIX_PPC' ]; then
+    ln -s source/interbase/lib/gdsshr.a jrd/libgdsshr.a
+fi
+if [ $1 = 'DG' ]; then
+    ln -s source/interbase/lib/gds.so.0 jrd/libgds.so.0
+    ln -s source/jrd/libgds.so.0 jrd/libgds.so
+    ln -s source/interbase/lib/gdsf.so jrd/libgdsf.so
+    ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+fi
+if [ $1 = 'EPSON' -o $1 = 'DECOSF' -o $1 = 'UNIXWARE' -o $1 = 'M88K' ]; then
+    ln -s source/interbase/lib/gds.so.0 jrd/libgds.so.0
+    ln -s source/jrd/libgds.so.0 jrd/libgds.so
+fi
+if [ $1 = 'HP700' -o $1 = 'HP9.0' -o $1 = 'HP10' ]; then
+    if [ -d super ]; then
+       ln -s source/builds/original/bind_gds.hp super/remote/gds.bind
+       ln -s source/builds/original/bind_gds.hp super/client/gds.bind
+    fi
+    ln -s source/interbase/lib/gds.sl jrd/libgds.sl
+    ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+    ln -s source/builds/original/bind_gds.hp jrd/gds.bind
+    ln -s source/builds/original/bind_gds5.hp jrd/gds5.bind
+fi
+if [ $1 = 'SOLARIS' -o $1 = 'SGI' -o $1 = 'SCO_EV' ]; then
+    ln -s source/interbase/lib/gdsmt.so.1 jrd/libgdsmt.so.1
+    ln -s source/interbase/lib/gdsmt.so.0 jrd/libgdsmt.so.0
+    ln -s source/jrd/libgdsmt.so.0 jrd/libgdsmt.so
+    ln -s source/interbase/lib/gds.so.0 jrd/libgds.so.0
+    ln -s source/jrd/libgds.so.0 jrd/libgds.so
+    ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+fi
+if [ $1 = 'SCO' -o $1 = 'IMP' ]; then
+    ln -s source/interbase/lib/gds_s.a jrd/libgds_s.a
+    ln -s source/interbase/lib/gdsf_s.a jrd/libgdsf_s.a
+    if [ $1 = 'SCO' ]; then
+        ln -s source/interbase/lib/gds_pyxis.a jrd/libgds_pyxis.a
+    fi
+fi
+if [ $1 = 'IMP' ]; then
+    ln -s source/builds/original/bind_gds_s.im jrd/gds_s.bind
+    ln -s source/builds/original/bind_gdsf_s.im jrd/gdsf_s.bind
+fi
+if [ $1 = 'SCO' ]; then
+    ln -s source/builds/original/bind_gds_s.sco jrd/gds_s.bind
+    ln -s source/builds/original/bind_gdsf_s.sco jrd/gdsf_s.bind
+fi
+# Lock
+ln -s .. lock/source
+ln -s source/builds/make.lock lock/makefile
+ln -s .. super/lock/source
+ln -s source/builds/make.lock_ss super/lock/makefile
+ln -s source/lock/$LOCK_HEADER lock/lock_header
+# Msgs
+ln -s .. msgs/source
+ln -s $3/msgs/msg.gdb msgs/master_msg_db
+ln -s master_msg_db msgs/msg.gdb
+ln -s source/builds/make.msgs msgs/makefile
+# Pipe
+ln -s .. pipe/source
+ln -s source/builds/make.pipe pipe/makefile
+# Pyxis
+ln -s .. pyxis/source
+ln -s source/jrd/yachts.gdb pyxis/yachts.lnk
+ln -s $3/pyxis/forms.gdb pyxis/forms.gdb
+ln -s source/interbase/lib/gds_pyxis.a pyxis/libgds_pyxis.a
+ln -s source/builds/make.pyxis pyxis/makefile
+# Qli
+ln -s .. qli/source
+ln -s source/jrd/yachts.gdb qli/yachts.lnk
+ln -s source/jrd/yachts.gdb qli/yachts.link
+ln -s $3/qli/help.gdb qli/help.gdb
+ln -s help.gdb qli/master_help_db
+ln -s source/builds/make.qli qli/makefile
+# Register
+ln -s .. register/source
+ln -s .. super/register/source
+# Remote
+ln -s .. remote/source
+ln -s source/builds/make.remote remote/makefile
+ln -s .. super/remote/source
+ln -s source/builds/make.remote_ss super/remote/makefile
+# Super
+ln -s . super/source
+ln -s ../builds super/builds
+ln -s ../interbase super/interbase
+ln -s builds/original/fetch_comp super/fetch_comp
+ln -s builds/special_opt super/special_opt
+
+if [ $1 = "DG" ]; then
+    ln -s source/interbase/examples/v3/gds_blk_data.f testing/gds_blk_data.f
+fi
+# Utilities
+ln -s .. utilities/source
+ln -s source/jrd/isc.gdb utilities/isc.gdb
+ln -s source/jrd/yachts.gdb utilities/yachts.lnk
+ln -s source/builds/make.utilities utilities/makefile
+ln -s $3/utilities/rebuild.gdb utilities/rebuild.gdb
+ln -s .. super/utilities/source
+ln -s source/jrd/isc.gdb super/utilities/isc.gdb
+ln -s source/jrd/yachts.gdb super/utilities/yachts.lnk
+ln -s source/builds/make.utilities_ss super/utilities/makefile
+ln -s $3/utilities/rebuild.gdb super/utilities/rebuild.gdb
+# Wal
+ln -s .. wal/source
+ln -s source/builds/make.wal wal/makefile
+ln -s .. super/wal/source
+ln -s source/builds/make.wal_ss super/wal/makefile
+# Builds
+ln -s ../.. builds/original/source
+# System specific directories
+ln -s .. builds/source
+if [ $SYS_TYPE = 'SUNOS4' ]; then
+    ln -s original/install.sun4 builds/install
+    ln -s original/servers.isc builds/servers.isc
+else
+	ln -s original/install.unix builds/install
+	if [ $1 = 'SUN3_3' ]; then
+	    ln -s original/servers.isc builds/servers.isc
+	fi
+fi
+if [ $1 = 'MU' -o $1 = 'UL' ]; then
+    ln -s original/inetd.conf.ultrix builds/inetd.conf.isc
+else
+	if [ $1 = 'IMP' -o $1 = 'SCO' -o $1 = 'EPSON' ]; then
+	    ln -s original/inetd.conf.psx builds/inetd.conf.isc
+        else
+	    ln -s original/inetd.conf.unx builds/inetd.conf.isc
+	fi
+fi
+cd builds/original
+chmod +x setup_prots
+./setup_prots
+# Save the production/development flag
+echo "$1" > .platform_type    
+cd ../..
+chmod +x setup_build
+./setup_build $2 
+

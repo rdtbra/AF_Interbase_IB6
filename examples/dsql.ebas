@@ -1,0 +1,86 @@
+10	%TITLE "DSQL"
+!  The contents of this file are subject to the Interbase Public
+!  License Version 1.0 (the "License"); you may not use this file
+!  except in compliance with the License. You may obtain a copy
+!  of the License at http://www.Inprise.com/IPL.html
+!
+!  Software distributed under the License is distributed on an
+!  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+!  or implied. See the License for the specific language governing
+!  rights and limitations under the License.
+!
+!  The Original Code was created by Inprise Corporation
+!  and its predecessors. Portions created by Inprise Corporation are
+!  Copyright (C) Inprise Corporation.
+!
+!  All Rights Reserved.
+!  Contributor(s): ______________________________________.
+
+	EXTERNAL LONG FUNCTION addr
+	DECLARE STRING city, state
+	DECLARE STRING CONSTANT query = &
+	'SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = "NY"'
+	DECLARE LONG population
+	DECLARE WORD flag1, flag2, flag3
+	RECORD SQLDA
+	    STRING SQLDAID = 8
+	    LONG SQLDABC
+	    WORD SQLN
+	    WORD SQLD
+	    GROUP SQLVAR (2)
+	        WORD SQLTYPE
+	        WORD SQLLEN
+	        LONG SQLDATA
+	        LONG SQLIND
+	        WORD SQLNAME_LENGTH
+	        STRING SQLNAME = 30
+            END GROUP SQLVAR
+	END RECORD SQLDA
+	DECLARE SQLDA SQLDA1
+
+	EXEC SQL INCLUDE SQLCA
+
+	EXEC SQL WHENEVER SQLERROR GO TO 999
+
+	city = SPACE$(25)
+        state = SPACE$(2)
+        SQLDA1::SQLN = 3
+	EXEC SQL PREPARE Q INTO sqlda1 FROM :query
+
+	! establish connection between the point fields in the SQLDA and
+	! the associated program variables.  On the way through, force
+	! text fields with SQL_TEXT, since SQL_VARYING won't work in BASIC
+
+	! note that <datatype> + 1 indicates a variable of <datatype> with
+	! an associated indicator field.
+
+        SQLDA1::SQLVAR(0)::SQLDATA = addr (city BY REF)
+        SQLDA1::SQLVAR(0)::SQLIND = addr (flag1 BY REF)
+        SQLDA1::SQLVAR(0)::SQLTYPE = SQL_TEXT + 1
+
+        SQLDA1::SQLVAR(1)::SQLDATA = addr (state BY REF)
+        SQLDA1::SQLVAR(1)::SQLIND = addr (flag2 BY REF)
+        SQLDA1::SQLVAR(1)::SQLTYPE = SQL_TEXT + 1
+
+        SQLDA1::SQLVAR(2)::SQLDATA = addr (population BY REF)
+        SQLDA1::SQLVAR(2)::SQLIND = addr (flag3 BY REF)
+
+	EXEC SQL DECLARE C CURSOR FOR Q
+
+	EXEC SQL OPEN C
+
+100
+	EXEC SQL FETCH C USING DESCRIPTOR sqlda1
+	IF SQLCODE <> 0% THEN
+           GO TO 200
+        END IF
+	PRINT city, state, population
+	GO TO 100
+200
+	EXEC SQL COMMIT RELEASE
+
+999     IF SQLCODE <> 0% THEN
+          PRINT 'Data base error, SQLCODE = '; SQLCODE
+          CALL gds__print_status (gds__status() BY REF)
+        END IF
+	end

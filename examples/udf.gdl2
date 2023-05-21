@@ -1,0 +1,64 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+modify database 'atlas.gdb';
+
+
+define function abs
+  module_name 'FUNCLIB/abs_udf'
+  entry_point 'fn_abs'
+  double by reference, 
+  double by value return_value;
+
+define function maxnum
+  module_name 'FUNCLIB/max_udf'
+  entry_point 'fn_max'
+  double by reference,
+  double by reference,
+  double by value return_value;
+
+define function time
+  module_name 'FUNCLIB/time_udf'
+  entry_point 'fn_time'
+  char[43] by reference return_value;
+
+/*
+   in a non-c shop, this would be
+   defined as UPPER and the UPPER_C
+   functions would be used in triggers 
+*/
+
+define function upper_non_c
+  module_name 'FUNCLIB/upper_nc_udf'
+  entry_point 'fn_upper_non_c'
+  char[256] by reference,
+  short by reference,
+  char[256] by reference return_value;
+
+
+/*
+   This version of the uppercase function
+   is for use in triggers and in C programs
+*/
+
+define function upper
+  module_name 'FUNCLIB/upper_udf'
+  entry_point 'fn_upper_c'
+  cstring[256] by reference,
+  cstring[256] by reference return_value;
+

@@ -1,0 +1,131 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# edit the IBASE variable to point to the Interbase directory
+IBASE=		..
+# edit the BC4DIR variable to point to the Borland C++ 4.0 directory
+BC4DIR=		\bc4
+INCLUDE=	-I$(IBASE)\include -I$(BC4DIR)\include
+LIBS=		$(IBASE)\lib\gds32.lib
+DB=		employee.gdb
+GPRE=		$(IBASE)\bin\gpre -c -n
+GPRE_M=		$(IBASE)\bin\gpre -c -n -m
+ISQL=		$(IBASE)\bin\isql -z
+CFLAGS=		-v -w- -a4 -tWM -DWIN32 $(INCLUDE)
+EXEFLAG=	-tWC
+CC=		bcc32
+LINK=		tlink32
+IMPLIB=		implib
+COPY=		copy
+EXE=		.exe
+
+.SUFFIXES: .e .c
+
+.e$(EXE):
+	$(GPRE) $< -d $(DB)
+	$(CC) $(CFLAGS) $(EXEFLAG) $(<:.e=.c) $(LIBS)
+
+.c$(EXE):
+	$(CC) $(CFLAGS) $(EXEFLAG) $< $(LIBS)
+
+
+all: employe2.gdb api1$(EXE) api10$(EXE) api11$(EXE) api12$(EXE) api13$(EXE) \
+     api14$(EXE) api15$(EXE) api16$(EXE) api16t$(EXE) api2$(EXE) api3$(EXE) \
+     api4$(EXE) api5$(EXE) api6$(EXE) api7$(EXE) api8$(EXE) \
+     api9$(EXE) apifull$(EXE) dyn1$(EXE) dyn2$(EXE) dyn3$(EXE) dyn4$(EXE) \
+     dyn5$(EXE) dynfull$(EXE) stat1$(EXE) stat10$(EXE) \
+     stat11$(EXE) stat12$(EXE) stat12t$(EXE) stat2$(EXE) stat3$(EXE) \
+     stat4$(EXE) stat5$(EXE) stat6$(EXE) stat7$(EXE) stat8$(EXE) stat9$(EXE) \
+     FILTERLIB FUNCLIB
+
+employe2.gdb: create2.sql
+	$(ISQL) -i $?
+
+FILTERLIB: api9f.dll api9f.lib
+
+api9f.lib: api9f.dll
+	$(IMPLIB) $@ $?
+
+api9f.dll: api9f.obj
+# build a small argument file and use it
+	@echo $(BC4DIR)\lib\c0d32.obj+ > link.arg
+        @echo $? >> link.arg
+        @echo $@ >> link.arg
+	@echo /x /Tpd >> link.arg 
+        @echo $(LIBS)+ >> link.arg
+        @echo $(BC4DIR)\lib\import32.lib+ >> link.arg
+	@echo $(BC4DIR)\lib\cw32mt.lib >> link.arg
+	$(LINK) @link.arg
+	$(COPY) $@ $(IBASE)\bin\FILTERLIB.DLL
+
+api9f.obj: api9f.c
+	$(CC) $(CFLAGS) -c -tWCDE $?
+	
+api9$(EXE): api9.c api9f.lib 
+	$(CC) $(CFLAGS) $(EXEFLAG) $** $(LIBS)
+	-$(ISQL) employee.gdb -i filter.sql
+
+api14.c:  api14.e
+	$(GPRE_M) $? -d $(DB)
+
+FUNCLIB: udflib.dll udflib.lib
+
+udflib.lib: udflib.dll
+	$(IMPLIB) $@ $?
+
+udflib.dll: udflib.obj
+# build a small argument file and use it
+	@echo $(BC4DIR)\lib\c0d32.obj+ > link.arg
+        @echo $? >> link.arg
+        @echo $@ >> link.arg
+	@echo /x /Tpd >> link.arg 
+        @echo $(LIBS)+ >> link.arg
+        @echo $(BC4DIR)\lib\import32.lib+ >> link.arg
+	@echo $(BC4DIR)\lib\cw32mt.lib >> link.arg
+	$(LINK) @link.arg
+
+udflib.obj: udflib.c
+	$(CC) $(CFLAGS) -c -tWCDE $?
+
+stat10.c: stat10.e
+	$(GPRE_M) $?
+
+stat11.c: stat11.e
+	$(GPRE_M) $?
+
+stat12.c: stat12.e
+	$(GPRE_M) $?
+
+stat12t.c: stat12t.e
+	$(GPRE_M) $?
+
+dyn1.c: dyn1.e
+	$(GPRE_M) $?
+
+dyn2.c: dyn2.e
+	$(GPRE_M) $?
+
+dyn3.c: dyn3.e
+	$(GPRE_M) $?
+
+dyn4.c: dyn4.e
+	$(GPRE_M) $?
+
+dyn5.c: dyn5.e
+	$(GPRE_M) $?
+
+dynfull.c: dynfull.e
+	$(GPRE_M) $?

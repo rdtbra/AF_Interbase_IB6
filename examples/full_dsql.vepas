@@ -1,0 +1,366 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program sql (INPUT, OUTPUT);
+
+
+DATABASE DB = COMPILETIME "atlas.gdb" RUNTIME db_name; 
+
+type
+	statement_type = array [1..2000] of char;
+	string_type = packed array [1..200] of char;
+
+var
+	done : boolean;
+	sqlda1 : sqlda;
+	statement : statement_type;
+	db_name : packed array [1..128] of char;
+
+procedure get_statement (VAR statement : statement_type);
+
+(**************************************
+ *
+ *   g e t _ s t a t e m e n t
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ **************************************)
+var
+	done, more : boolean;
+	i, j, k : integer;
+	buffer : packed array [1..200] of char;
+
+begin
+ 
+write ('SQL> ');
+readln (buffer);
+done := FALSE;
+j := 0;
+while NOT done do
+	begin
+        i := 200;
+	more := FALSE;
+        while (i > 0) AND (buffer[i] = ' ') do
+		i := i - 1;
+        if i <> 0 then
+		begin
+		if buffer[i] = '-' then
+			begin
+			more := TRUE;
+			i := i - 1;
+			end;
+		for k := 1 to i do
+			statement [j + k] := buffer [k];
+		j := j + i;
+		if NOT more then
+			begin
+			for k := j + 1 to size (statement) do
+				statement [k] := ' ';
+			done := TRUE;
+			end;
+		end;
+	if NOT done then
+	    begin
+	    write ('CON> ');
+	    readln (buffer);
+	    end;
+	end;
+end;
+
+procedure print_line (VAR sqlda1: sqlda);
+
+(**************************************
+ *
+ *   p r i n t _ l i n e
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ **************************************)
+var
+	len, i, typ : integer;
+	string_ptr : [UNSAFE] ^string_type;
+	short_ptr : [UNSAFE] ^gds__short;
+	long_ptr : [UNSAFE] ^integer;
+	double_ptr : [UNSAFE] ^double;
+	float_ptr : [UNSAFE] ^real;
+
+begin
+
+for i := 1 to sqlda1.sqld do begin
+    short_ptr := sqlda1.sqlvars[i].sqlind;
+    typ := sqlda1.sqlvars[i].sqltype - 1;
+    if (short_ptr^ < 0) then
+        begin
+       (* If field was missing print <null> *)
+        case typ of
+            SQL_SHORT   : len := 8;
+            SQL_LONG    : len := 12;
+			    SQL_FLOAT   : len := 12;
+            SQL_DOUBLE  : len := 12;
+            SQL_TEXT    : len := sqlda1.sqlvars[i].sqllen;
+            end;
+        
+        write ('<null>');
+        len := len - 6;
+        if len > 0 then
+            write (' ' : len);
+        end
+    else begin
+        (* Print field according to its data type *)
+        case typ of
+            SQL_SHORT   : begin;
+                          short_ptr :=
+							             
+sqlda1.sqlvars[i].sqldata;
+                          write (short_ptr^);
+                          end;
+            SQL_LONG    : begin;
+                          long_ptr :=
+								             
+sqlda1.sqlvars[i].sqldata;
+                          write (long_ptr^);
+                          end;
+				 SQL_FLOAT   : begin;
+                          float_ptr :=
+								             
+sqlda1.sqlvars[i].sqldata;
+                          write (float_ptr^);
+                          end;
+            SQL_DOUBLE  : begin;
+                          double_ptr :=
+						             
+sqlda1.sqlvars[i].sqldata;
+                          write (double_ptr^);
+                          end;
+            SQL_TEXT    : begin;
+                          len := sqlda1.sqlvars[i].sqllen;
+                          string_ptr :=
+    								             
+sqlda1.sqlvars[i].sqldata;
+                          write (string_ptr^ : len);
+                          end;
+            end;
+        end;
+    if i <> sqlda1.sqld then
+        write (' ');
+    end;
+writeln (' ');
+end;
+
+procedure process_statement (VAR statement : statement_type;
+				VAR sqlda1: sqlda);
+
+(**************************************
+ *
+ *   p r o c e s s _ s t a t e m e n t
+ *
+ **************************************
+ *
+ * Functional description
+ *
+ **************************************)
+var
+	done, first : boolean;
+	i, typ : integer;
+	string_ptr : [UNSAFE] ^string_type;
+	short_ptr : [UNSAFE] ^gds__short;
+	long_ptr : [UNSAFE] ^integer;
+	double_ptr : [UNSAFE] ^double;
+	float_ptr : [UNSAFE] ^real;
+label
+    999;
+
+begin
+
+EXEC SQL WHENEVER SQLERROR GO TO 999;
+
+if (gds__trans = nil) then
+	START_TRANSACTION;
+EXEC SQL PREPARE Q1 INTO sqlda1 FROM :statement;
+
+if sqlda1.sqld = 0 then
+    begin
+    (* If the statement isn't a select, execute it and be done 
+*)
+    EXEC SQL EXECUTE Q1;
+    goto 999;
+    end
+else if sqlda1.sqld > sqlda1.sqln then
+    begin
+    write ('Statment not executed, can only select ');
+    write (sqlda1.sqln);
+    writeln (' items');
+    goto 999;
+    end;
+
+(* Otherwise, open the cursor to start things up *)
+EXEC SQL DECLARE C CURSOR FOR Q1;
+EXEC SQL OPEN C;
+
+(* Set up SQLDA to receive data *)
+for i := 1 to sqlda1.sqld do begin
+    typ := sqlda1.sqlvars[i].sqltype - 1;
+    case typ of
+        SQL_SHORT   : begin;
+                      new (short_ptr);
+                      sqlda1.sqlvars[i].sqldata := short_ptr;
+                      end;
+        SQL_LONG    : begin;
+                      new (long_ptr);
+                      sqlda1.sqlvars[i].sqldata := long_ptr;
+                      end;
+			SQL_FLOAT   : begin;
+                      new (float_ptr);
+                      sqlda1.sqlvars[i].sqldata := float_ptr;
+                      end;
+        SQL_DOUBLE  : begin;
+                      new (double_ptr);
+                      sqlda1.sqlvars[i].sqldata := double_ptr;
+                      end;
+        SQL_TEXT    : begin;
+                      new (string_ptr);
+                      sqlda1.sqlvars[i].sqldata := string_ptr;
+                      end;
+        SQL_VARYING : begin;
+                      sqlda1.sqlvars[i].sqltype := 
+	  					         SQL_TEXT + 1;
+                      sqlda1.sqlvars[i].sqllen :=
+						         
+sqlda1.sqlvars[i].sqllen - 2;
+                      new (string_ptr);
+                      sqlda1.sqlvars[i].sqldata := string_ptr;
+                      end;
+        SQL_DATE    : begin;
+                      sqlda1.sqlvars[i].sqltype := 
+						         SQL_TEXT + 1;
+                      sqlda1.sqlvars[i].sqllen := 12;
+                      new (string_ptr);
+                      sqlda1.sqlvars[i].sqldata := string_ptr;
+                      end;
+        SQL_BLOB    : begin;
+                      writeln
+		 ('Statment not executed, cannot select blob fields');
+                      goto 999;
+                      end;
+        end;
+    new (short_ptr);
+    sqlda1.sqlvars[i].sqlind := short_ptr;
+    end;
+
+(* Fetch and print records until EOF *)
+first := TRUE;
+done := FALSE;
+while NOT done do
+    begin
+    EXEC SQL FETCH C USING DESCRIPTOR sqlda1;
+    if SQLCODE <> 0 then
+	done := TRUE
+    else
+        print_line (sqlda1);
+    end;
+
+if NOT first then
+    writeln (' ');
+
+EXEC SQL CLOSE C;
+EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+(* Now free the allocated variables *)
+for i := 1 to sqlda1.sqld do begin
+    typ := sqlda1.sqlvars[i].sqltype - 1;
+    case typ of
+        SQL_SHORT   : begin;
+                      short_ptr := sqlda1.sqlvars[i].sqldata;
+                      dispose (short_ptr);
+                      end;
+        SQL_LONG    : begin;
+                      long_ptr := sqlda1.sqlvars[i].sqldata;
+                      dispose (long_ptr);
+                      end;
+        SQL_FLOAT   : begin;
+                      float_ptr := sqlda1.sqlvars[i].sqldata;
+                      dispose (float_ptr);
+                      end;
+			SQL_DOUBLE  : begin;
+                      double_ptr := sqlda1.sqlvars[i].sqldata;
+                      dispose (double_ptr);
+                      end;
+        SQL_TEXT    : begin;
+                      string_ptr := sqlda1.sqlvars[i].sqldata;
+                      dispose (string_ptr);
+                      end;
+        end;
+    short_ptr := sqlda1.sqlvars[i].sqlind;
+    dispose (short_ptr);
+    end;
+
+999: if (SQLCODE <> 0) then
+        begin
+        writeln ('Data base error, SQLCODE = ', SQLCODE);
+        gds__print_status (gds__status);
+        end;
+end;
+
+begin  (* main *)
+
+sqlda1.sqln := 100;
+
+(* Get the runtime database name. This is the db we'll process
+   queries against *)
+write('Database to query?  ');
+readln(db_name);
+
+READY;
+START_TRANSACTION;
+
+(* Prompt for SQL statements and process them *)
+done := FALSE;
+while NOT done do
+    begin
+    get_statement (statement);
+
+    if (((statement[1] = 'E') OR (statement[1] = 'e')) AND
+        ((statement[2] = 'X') OR (statement[2] = 'x')) AND
+        ((statement[3] = 'I') OR (statement[3] = 'i')) AND
+        ((statement[4] = 'T') OR (statement[4] = 't'))) then
+         begin
+	 if (gds__trans <> nil) then
+	     COMMIT;
+	 FINISH;
+	 done := TRUE;
+         end
+    else if (((statement[1] = 'Q') OR (statement[1] = 'q')) AND
+        ((statement[2] = 'U') OR (statement[2] = 'u')) AND
+        ((statement[3] = 'I') OR (statement[3] = 'i')) AND
+        ((statement[4] = 'T') OR (statement[4] = 't'))) then
+         begin
+	 if (gds__trans <> nil) then
+	     ROLLBACK;
+	 FINISH;
+	 done := TRUE;
+         end
+    else
+        process_statement (statement, sqlda1);
+    end;
+end.

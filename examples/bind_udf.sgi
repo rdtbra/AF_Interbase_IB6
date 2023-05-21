@@ -1,0 +1,17 @@
+#ident "InterBase V3.1 shared UDF library"
+#address .text 0x0b000000
+#address .data 0x0b400000
+#target /usr/lib/libgdsf_s
+#branch
+    FUNCTIONS_entrypoint	1
+#objects
+    shrudf.bin
+    functions.bin
+    udf.bin
+#init shrudf.bin
+    _libfun_strcmp		strcmp
+    _libfun_sprintf		sprintf
+    _libfun_time		time
+    _libfun_ctime		ctime
+    _libfun_strcpy		strcpy
+    _libfun_strlen		strlen

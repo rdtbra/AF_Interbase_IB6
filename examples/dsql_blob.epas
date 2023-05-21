@@ -1,0 +1,78 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program dsql_blob_display (INPUT, OUTPUT);
+
+DATABASE atlas = 'atlas.gdb';
+
+EXEC SQL
+    INCLUDE SQLCA;
+
+EXEC SQL
+    WHENEVER SQLERROR GO TO 999
+
+var
+    blob : gds__quad;
+    sqlda1 : sqlda;
+    flag : integer16;
+    query: array[1..61] of CHAR :=
+		 'SELECT GUIDEBOOK FROM TOURISM WHERE STATE = "NY"';
+label
+    999;
+
+begin
+
+    READY;
+    START_TRANSACTION;
+    
+    sqlda1.sqln := 1;
+
+    EXEC SQL
+        PREPARE Q INTO sqlda1 FROM :query;
+    
+    sqlda1.sqlvars[1].sqldata := addr(blob);
+    sqlda1.sqlvars[1].sqlind := addr(flag);
+    
+    EXEC SQL
+        DECLARE C CURSOR FOR Q;
+    
+    EXEC SQL
+        OPEN C;
+    
+    EXEC SQL
+        FETCH C USING DESCRIPTOR sqlda1;
+    
+    if SQLCODE <> 0 then goto 999
+    else
+        blob__display (blob, atlas, gds__trans, 'guidebook',
+				 sizeof ('guidebook'));
+
+    EXEC SQL 
+        COMMIT RELEASE;
+   
+
+999: if ((SQLCODE <> 0) and (sqlcode <> 100)) then
+     begin
+       writeln ('Data base error, SQLCODE = ', SQLCODE);
+       gds__print_status (gds__status);
+       EXEC SQL 
+         ROLLBACK RELEASE;
+     end;
+end.

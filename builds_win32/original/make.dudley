@@ -1,0 +1,74 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- DUDLEY MAKEFILE ---------------------------------
+#       This makefile builds the GDEF objects.  DUDLEY?? Your guess is as good as 
+#       mine
+#       
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=    
+
+DUDLEY_FILES=   ddl.c exe.c expand.c expr.c extract.c generate.c \
+		hsh.c lex.c parse.c trn.c
+
+DUDLEY_OBJS=    $(DUDLEY_FILES:.c=.obj)
+
+GPRE_MISC=      $(ROOT)\gpre\$(.path.obj)\pretty.obj
+
+!if $(VERSION)==DEV
+JRD_MISC=       $(ROOT)\jrd\$(COMPILER)_obj\bind\iberr.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc_file.obj \
+		$(ROOT)\jrd\$(COMPILER)_obj\bind\llio.obj \
+		$(ROOT)\jrd\$(COMPILER)_obj\bind\misc.obj
+
+WAL_MISC=       $(ROOT)\wal\$(COMPILER)_obj\bind\walf.obj
+!else
+JRD_MISC=       $(ROOT)\jrd\$(COMPILER)_obj\bin\iberr.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc.obj \
+		$(ROOT)\jrd\$(.path.obj)\isc_file.obj \
+		$(ROOT)\jrd\$(COMPILER)_obj\bin\llio.obj \
+		$(ROOT)\jrd\$(COMPILER)_obj\bin\misc.obj
+
+WAL_MISC=       $(ROOT)\wal\$(COMPILER)_obj\bin\walf.obj
+!endif
+
+#---------------------------------------------------------------------------------
+
+dudley.exe:     $(DUDLEY_OBJS) $(GPRE_MISC) $(JRD_MISC) $(WAL_MISC)
+	-$(RM) dudley.exe
+	$(ECHO) > dudley.rsp
+	$(ECHO) $(GPRE_LINK) >> dudley.rsp
+	$(CC) @&&!
+$** $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\dudley
+$(SHRLIB_LINK) $(CONLIBSDLL) $(ADVAPILIB) $(MPRLIB)
+$(VER_RES_LINK)
+!
+	$(TOUCH) dudley.exe
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif
+

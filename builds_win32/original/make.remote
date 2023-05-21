@@ -1,0 +1,115 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- REMOTE MAKEFILE ------------------------------
+#	This makefile builds the remote objects and the remote server.
+#
+#	There are two main rules here:
+#		remote.rsp - bring the .o files and response file up to date
+#		nt_server.exe - build the remote server
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GPRE_FLAGS=
+
+DOT_E_FILES=
+
+REMOTE_FILES=	allr.c inet.c merge.c parser.c protocol.c remote.c \
+                wnet.c xdr.c xnet.c spxnet32.c
+#don't need this if statically linked to server stuff
+#JRD_MISC=	$(ROOT)\jrd\$(.path.obj)\isc.obj \
+#		$(ROOT)\jrd\$(.path.obj)\isc_file.obj \
+#		$(ROOT)\jrd\$(.path.obj)\isc_sync.obj \
+#		$(ROOT)\jrd\$(.path.obj)\sdl.obj \
+#		$(ROOT)\jrd\$(.path.obj)\thd.obj \
+#		$(ROOT)\jrd\$(.path.obj)\iberr.obj
+
+REMOTE_OBJS=	$(REMOTE_FILES:.c=.obj)
+
+IPSERVER_OBJS=	$(ROOT)\ipserver\$(.path.obj)\alli.obj \
+		$(ROOT)\ipserver\$(.path.obj)\ipserver.obj 
+
+# These are the server files, with the exception of window.c, which is compiled with different options
+SERVER_FILES=	srvr_w32.c server.c cntl.c chop.c window.c ibconfig.c \
+		property.c $(REMOTE_FILES)
+SERVER_OBJS= 	$(SERVER_FILES:.c=.obj)
+
+!if $(COMPILER) == MS
+SERVER_IMPORTS=	GDI32.LIB USER32.LIB MSVCRT.LIB COMCTL32.LIB $(WSOCKLIB) $(ADVAPILIB) \
+		$(MPRLIB) SHELL32.LIB
+!else
+SERVER_IMPORTS=	$(SVRLIB_LINK) CW32MTI.LIB IMPORT32.LIB
+!endif
+
+remote.rsp:	$(.path.obj)\remote.rsp
+
+$(.path.obj)\remote.rsp:      $(REMOTE_OBJS) interface.obj
+	$(RM) $(.path.obj)\remote.rsp
+	&echo $(ROOT)\remote\$** $(RSP_CONTINUE) >> $(.path.obj)\remote.rsp
+
+nt_server.exe: $(.path.obj)\nt_server.rsp window.res 
+	$(ECHO) $(VERSION_CFLAGS) $(O_EXE_SWITCH)$(.path.obj)\nt_server.exe > tmp.rsp
+	$(ECHO) $(.path.obj)\window.obj $(.path.obj)\property.obj $(.path.obj)\ibconfig.obj $(SVRLIB_LINK) >> tmp.rsp
+!if $(COMPILER) == MS
+	$(ECHO) $(.path.res)\window.res >> tmp.rsp
+!endif
+	$(ECHO) $(SERVER_IMPORTS) >> tmp.rsp
+	$(CC)  @tmp.rsp @$(.path.obj)\nt_server.rsp
+!if $(COMPILER) == BC
+	$(BRC32) -fe$(.path.obj)\nt_server.exe $(.path.res)\window.res
+!endif
+
+$(.path.obj)\nt_server.rsp: $(SERVER_OBJS) $(IPSERVER_OBJS) $(JRD_MISC)
+	$(RM) $<
+	&$(ECHO) $** >> $<
+
+
+$(.path.res)\window.res: window.rc ibconfig.rc property.rc
+
+
+window.obj:	window.c
+	$(CC) @&&! 
+-DSERVER_SHUTDOWN $(VERSION_CFLAGS) -c $(O_OBJ_SWITCH)$(.path.obj)\window.obj
+-DWIN32 -DEXACT_NUMERICS
+-DWIN32_LEAN_AND_MEAN -DWIN_NT -Di386 -DSUPERSERVER $(XNETFLAG) window.c
+!
+
+property.obj:	property.c
+	$(CC) -c @&&!
+	$(CFLAGS)
+	$(VERSION_FLAG) property.c
+
+#-DSERVER_SHUTDOWN $(VERSION_CFLAGS) -c $(O_OBJ_SWITCH)$(.path.obj)\property.obj
+#-DWIN32_LEAN_AND_MEAN -DWIN32 -DWIN95 -DSUPERSERVER property.c
+#-DWIN32_LEAN_AND_MEAN -DWIN_NT -Di386 property.c 
+!
+
+ibconfig.obj:	ibconfig.c
+	$(CC) -c @&&!
+	$(CFLAGS)
+	$(VERSION_FLAG) ibconfig.c
+#-DSERVER_SHUTDOWN $(VERSION_CFLAGS) -c $(O_OBJ_SWITCH)$(.path.obj)\ibconfig.obj
+#-DWIN32_LEAN_AND_MEAN -DWIN32 ibconfig.c
+#-DWIN32_LEAN_AND_MEAN -DWIN_NT -Di386 ibconfig.c
+!
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif
+

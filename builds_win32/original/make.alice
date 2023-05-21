@@ -1,0 +1,55 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- ISQL MAKEFILE ---------------------------------
+#       This makefile builds the gfix objects needed for command line ISQL.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=	met.e
+
+GFIX_FILES=     alice.c exe.c all.c tdr.c met.c
+
+GFIX_OBJS=      $(GFIX_FILES:.c=.obj)
+
+JRD_MISC=	$(ROOT)\jrd\$(.path.obj)\isc.obj
+
+#-----------------------------------------------------------------------------
+
+alice.rsp:	$(GFIX_OBJS)
+	-$(RM) $(.path.obj)\alice.rsp
+	&echo $(ROOT)\alice\$** $(RSP_CONTINUE) >> $(.path.obj)\alice.rsp
+
+gfix.exe:	$(.path.obj)\gfix.exe
+
+$(.path.obj)\gfix.exe:	$(GFIX_OBJS) $(JRD_MISC)
+	$(CC) @&&!
+$** $(VERSION_CFLAGS)
+$(O_EXE_SWITCH)$(.path.obj)\gfix
+$(SHRLIB_LINK) $(CONLIBSDLL) USER32.LIB $(ADVAPILIB) /link $(ROOT)\jrd\$(.path.obj)\$(VERSION_RES)
+!
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif

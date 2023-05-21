@@ -1,0 +1,77 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+define database "cs_load.gdb"
+	page_size 1024;
+
+
+/*	Global Field Definitions	*/
+
+define field CITY char [20] sub_type 101;
+define field CLIENT char [32] sub_type 101;
+define field CLIENTNO char [6];
+define field COUNTRY char [15];
+define field DESCRIPTION char [100] sub_type 153;
+define field FIRSTNAME char [32] sub_type 101;
+define field LASTNAME char [32] sub_type 101;
+define field NAME char [30] sub_type 153;
+define field PC_DESCRIPTION char [100] sub_type 101;
+define field PC_PRODUCTNAME char [20] sub_type 101;
+define field POSTCODE char [10];
+define field PRODUCTNAME char [20] sub_type 153;
+define field STREET_ADDRESS char [50] sub_type 101;
+
+define field NEWLINE char[1];
+
+
+/*	Relation Definitions	*/
+
+
+define relation CLIENTS
+external_file "clients.437"
+    CLIENTNO	position 1,
+    CLIENT	position 2,
+    STREET_ADDRESS	position 3,
+    CITY	position 4,
+    POSTCODE	position 5,
+    COUNTRY	position 6,
+    NEWLINE;
+
+define relation CONTACTS
+external_file "contacts.437"
+    CONTACTNO based on CLIENTNO	position 1,
+    CLIENTNO	position 2,
+    FIRSTNAME	position 3,
+    LASTNAME	position 5,
+    NEWLINE;
+
+define relation PRODUCTS
+external_file "products.lat1"
+    PRODUCTNO based on CLIENTNO	position 1,
+    PRODUCTNAME	position 2,
+    PC_PRODUCTNAME	position 3,
+    DESCRIPTION	position 4,
+    PC_DESCRIPTION	position 5,
+    NEWLINE;
+
+define relation USERS
+external_file "users.lat1" 
+    USERID	char[6] position 1,
+    NAME	position 2,
+    NEWLINE;
+

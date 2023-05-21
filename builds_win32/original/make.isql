@@ -1,0 +1,54 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- ISQL MAKEFILE ---------------------------------
+#       This makefile builds the isql objects needed for command line ISQL.
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+GPRE_FLAGS=     -r -m -z -n
+
+DOT_E_FILES=    extract.c isql.c show.c
+
+ISQL_FILES=     extract.c isql.c show.c
+
+ISQL_OBJS=      $(ISQL_FILES:.c=.obj)
+MUISQL_OBJS=    $(ISQL_OBJS:isql.c=muisql.c)
+
+JRD_MISC=
+
+MUISQL_LINK_OBJS= extract.obj muisql.obj show.obj
+
+#-----------------------------------------------------------------------------
+
+isql.exe:       $(ISQL_OBJS) $(JRD_MISC)
+	-$(RM) isql.exe
+	$(CC) @&&!
+$** $(VERSION_CFLAGS)
+$(O_EXE_SWITCH)$(.path.obj)\isql
+$(GDSSHR_LINK) USER32.LIB $(VER_RES_LINK)
+!
+	$(TOUCH) isql.exe
+
+dot_e_files:    $(DOT_E_FILES)
+	$(TOUCH) dot_e_files
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif

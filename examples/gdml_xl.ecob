@@ -1,0 +1,241 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. UPDATE-GUIDE.
+*
+* The contents of this file are subject to the Interbase Public
+* License Version 1.0 (the "License"); you may not use this file
+* except in compliance with the License. You may obtain a copy
+* of the License at http://www.Inprise.com/IPL.html
+*
+* Software distributed under the License is distributed on an
+* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+* or implied. See the License for the specific language governing
+* rights and limitations under the License.
+*
+* The Original Code was created by Inprise Corporation
+* and its predecessors. Portions created by Inprise Corporation are
+* Copyright (C) Inprise Corporation.
+*
+* All Rights Reserved.
+* Contributor(s): ______________________________________.
+*
+
+      *
+      * It's time to update and print the tourist information we have for New
+      * England and the Pacific Northwest.  This program first prints and
+      * optionally modifies the tourist information for each state, then
+      * creates a database that is a guide to Northern US seacoasts.
+      *
+       ENVIRONMENT DIVISION.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+           DATABASE ATLAS = FILENAME 'atlas.gdb'
+           DATABASE GUIDE = FILENAME 'cguide.gdb'
+
+       01  STATE-LIST VALUE IS 'ME  NH  MA  RI  CT  OR  WA  AK  '.
+           03 STATE-CODE BASED ON ATLAS.STATES.STATE OCCURS 8 TIMES.
+
+       01  FILENAME PIC X(40).
+       01  OUT-STRING PIC X(40).
+       01  NEW-LINE PIC X(60).
+       01  CHOICE  PIC X(1).
+       01  DOT  PIC X(1).
+       01  UPDATE-TR PIC S9(9) USAGE COMP.
+       01  TRANS-TR PIC S9(9) USAGE COMP.
+       01  STATE  BASED ON ATLAS.STATES.STATE.
+       01  I  PIC S9(9) USAGE COMP.
+       01  LEN  PIC S9(4) USAGE COMP.
+       01  END-INPUT PIC S9(4) USAGE COMP.
+       01  DONE   PIC S9(4) USAGE COMP. 
+       01  CRLF-BIN PIC S9(4) USAGE COMP VALUE IS 2573.
+       01  CRLF  REDEFINES CRLF-BIN PIC X(2).
+       01  TEMP-FILE PIC X(8) VALUE IS "temp.pub".
+       01  GUIDEBOOK PIC X(9) VALUE IS "guidebook".
+       PROCEDURE DIVISION.
+       MAIN-SECTION.
+
+      **************************************
+      *
+      * m a i n
+      *
+      **************************************
+      *
+      * Functional description
+      *
+      * The main routine establishes a list of
+      * states from the main atlas database.  Its
+      * subroutines allow the user to update guidebook 
+      * descriptions of those states, and store them
+      * in a separate database.
+      **************************************
+
+           READY ATLAS.
+           READY 'ncguide.gdb' AS GUIDE.
+
+           PERFORM CLEAN-UP.
+           PERFORM TRANSFER-DATA.
+
+           FINISH ATLAS.
+           FINISH GUIDE.
+           STOP RUN.
+
+       CLEAN-UP.
+
+      **************************************
+      *
+      *           c l e a n - u p
+      *
+      **************************************
+      *
+      *           Functional description
+      *
+      *           At the users' choice, edit the tourism blob for 
+      *           selected states, load a new one from a named file,
+      *           or accept text from standard input.
+      **************************************
+
+      * start a named transaction for update, reserving the necessary relations
+
+           MOVE 0 TO UPDATE-TR.
+           START_TRANSACTION UPDATE-TR CONCURRENCY READ_WRITE 
+            RESERVING ATLAS.TOURISM FOR WRITE,
+            ATLAS.STATES FOR READ
+
+
+           PERFORM WITH TEST AFTER VARYING I FROM 1 BY 1 UNTIL I = 8 
+            MOVE STATE-CODE (I) TO STATE
+            FOR (TRANSACTION_HANDLE UPDATE-TR) S IN ATLAS.STATES 
+          CROSS T IN ATLAS.TOURISM OVER STATE WITH S.STATE = STATE
+             DISPLAY " "
+             DISPLAY "Here's the information on ", S.STATE_NAME
+             DISPLAY " "
+             MOVE 9 TO LEN
+             CALL "blob__display" USING @ T.GUIDEBOOK, 
+              ATLAS, UPDATE-TR, GUIDEBOOK, LEN
+             DISPLAY 'Is this information up to date? (Y/N) ' 
+               WITH NO ADVANCING 
+             ACCEPT CHOICE
+             IF (CHOICE NOT = 'Y') AND (CHOICE NOT = 'y') THEN 
+              MODIFY T USING
+                DISPLAY 
+             'Enter F to update from a file, E to edit the description '
+                 WITH NO ADVANCING
+               ACCEPT CHOICE
+               MOVE 0 TO DONE
+               IF (CHOICE = 'f') OR (CHOICE = 'F') THEN
+                DISPLAY 
+                 'Enter full name of input file '
+                  WITH NO ADVANCING
+                ACCEPT FILENAME
+                UNSTRING FILENAME DELIMITED BY " " 
+                 INTO OUT-STRING COUNT IN LEN
+                CALL "blob__load" USING @ T.GUIDEBOOK,
+                 ATLAS, UPDATE-TR, OUT-STRING, LEN
+                MOVE 1 TO DONE
+               END-IF
+               IF (CHOICE = 'e') OR  (CHOICE = 'E') THEN
+                MOVE 9 TO LEN
+                CALL "blob__edit" USING @ T.GUIDEBOOK,
+                 ATLAS, UPDATE-TR, GUIDEBOOK, LEN
+                MOVE 1 TO DONE
+               END-IF
+               IF DONE NOT = 1
+                DISPLAY 
+               'Enter new information from standard input.  '
+                WITH NO ADVANCING
+                DISPLAY 'Terminate with period (".") beginning a line'
+                MOVE 0 TO END-INPUT
+                 CREATE_BLOB NEW IN T.GUIDEBOOK
+                MOVE 60 TO NEW.LENGTH
+                PERFORM GET-LINE
+                PERFORM UNTIL END-INPUT = 1
+                 STRING NEW-LINE, CRLF DELIMITED BY SIZE
+                  INTO NEW.SEGMENT
+                 PUT_SEGMENT NEW
+                 PERFORM GET-LINE
+                END-PERFORM
+                CLOSE_BLOB NEW
+               END-IF
+              END_MODIFY
+             END-IF
+            END_FOR
+           END-PERFORM
+           COMMIT (UPDATE-TR).
+
+       GET-LINE.
+           ACCEPT NEW-LINE 
+           MOVE NEW-LINE TO DOT
+           IF (DOT = ".") THEN MOVE 1 TO END-INPUT.
+
+
+
+       TRANSFER-DATA.
+
+      **************************************
+      *
+      *           t r a n s f e r - d a t a
+      *
+      **************************************
+      *
+      *           Functional description
+      *
+      *           Move the tourism information for selected
+      *           states to the guide-book database.
+      **************************************)
+
+           MOVE 0 TO TRANS-TR.
+
+           START_TRANSACTION TRANS-TR CONCURRENCY READ_WRITE
+            RESERVING ATLAS.TOURISM FOR READ,
+            GUIDE.TOURISM FOR WRITE
+
+
+           PERFORM VARYING I FROM 1 BY 1 UNTIL I = 8
+            FOR (TRANSACTION_HANDLE TRANS-TR) S IN ATLAS.STATES 
+             CROSS T IN ATLAS.TOURISM OVER STATE WITH 
+             S.STATE = STATE-CODE (I)
+
+             STORE (TRANSACTION_HANDLE TRANS-TR) NEW IN GUIDE.TOURISM USING
+              MOVE S.STATE TO NEW.STATE 
+              MOVE S.STATE_NAME TO NEW.STATE_NAME 
+              MOVE T.CITY TO NEW.CITY 
+                       MOVE T.ZIP TO NEW.ZIP
+
+      * One way to copy a blob
+              CREATE_BLOB N_ADDR IN NEW.OFFICE
+              FOR O_ADDR IN T.OFFICE
+               MOVE O_ADDR.SEGMENT TO N_ADDR.SEGMENT
+               MOVE O_ADDR.LENGTH TO N_ADDR.LENGTH
+               PUT_SEGMENT N_ADDR
+              END_FOR
+              CLOSE_BLOB N_ADDR
+
+      * another way to copy a blob
+              MOVE 8 TO LEN
+              CALL "blob__dump" USING @ T.GUIDEBOOK,
+               ATLAS, TRANS-TR, TEMP-FILE, LEN
+              CALL "blob__load" USING @ NEW.GUIDEBOOK,
+               GUIDE, TRANS-TR, TEMP-FILE,  LEN
+             END_STORE
+             END_FOR
+           END-PERFORM
+           PREPARE TRANS-TR
+            ON_ERROR
+             DISPLAY 'Error preparing a multi-database transaction'
+             DISPLAY 
+            'Please manually rollback limbo transactions in GUIDE '
+            'and ATLAS'
+             ROLLBACK TRANS-TR
+            END_ERROR
+
+
+           IF (TRANS-TR NOT = 0) THEN
+            COMMIT TRANS-TR
+             ON_ERROR
+              DISPLAY
+             'Error committing a prepared multi-database transaction'
+              DISPLAY
+             'Please manually commit limbo transactions in GUIDE '
+             'and ATLAS'
+             END_ERROR
+
+           DISPLAY "End of program".

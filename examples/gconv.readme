@@ -1,0 +1,259 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+
+                  GCONV.E - Interbase EXAMPLE Import Program
+
+
+NOTE:  gconv.e source is the property of Interbase Software, Inc. BUT 
+       Interbase doest NOT support the program through normal support
+       channels.
+
+1) Compile using a makefile like the following.  This is a makefile for 
+   the Apollo platform and can easily be converted for use on other
+   platforms.
+
+   NOTE: on HP and IBM AIX machines you must use -D_NO_DOLLAR switch
+
+   Example: cc gconv.o -o gconv -D_NO_DOLLAR
+
+   --------------- CUT HERE -------------------------------
+	.SUFFIXES: .c .e
+	.e.c :
+		gpre -e -n -m $<
+	.c.o :
+		cc $(CFLAGS) $<
+	
+	CFLAGS =  -c -g
+	
+	all:	gconv gconf
+	            
+	gconv:	gconv.o
+		cc gconv.o -o gconv
+	
+	gconv.o:gconv.c
+	gconv.c:gconv.e
+	
+	gconf:	gconf.o
+		cc gconf.o -o gconf
+	
+	gconf.o:gconf.c
+	gconf.c:gconf.e
+   --------------- CUT HERE -------------------------------
+ 
+2) Create a ASCII Template file using your editor or gconf.
+
+3) For help type:
+
+	gconv -h
+		(This will print out the syntax help text and explain
+		 all of the switches)
+
+		Syntax: gconv   [-d (database name)] 
+				[-c] 
+				[-f (input name)] 
+				[-i 3,4,5] 
+				[-l 9-999] 
+				[-t (template name)] 
+				[-v] 
+				[-z] 
+				[-h]
+
+		-c: allow C style ( /* .. */ ) comments in data file 
+		-d: database name
+		-f: input file name
+		-h: print this help text
+		-i: ignore columns for input (comma list)
+		-l: line range (ending line number must be preceeded by "-")
+		-t: conversion template file name
+		-v: validate and report max sizes of input file fields
+		-z: print Interbase Version information
+
+
+4) An example invocation is:
+
+        gconv -d expenses.gdb -t exp.dbf -f expense.txt -z
+
+		This will store the info in expense.txt into expenses.gdb
+		using the template file exp.dbf.  It will also print the
+		version of the Interbase Access method used.
+
+	OR
+
+        gconv -d expenses.gdb -t exp.dbf -f expense.txt -i 1,3,5 -z
+
+		This will store the info in expense.txt (except for the
+		data in columns 1, 3, and 5) into expenses.gdb using the 
+		template file exp.dbf.  It will also print the version of 
+		the Interbase Access method used.
+
+	OR
+
+        gconv -d expenses.gdb -t exp.dbf -f expense.txt -l 2 -z
+
+		This will store the info in expense.txt (starting at line
+		two) into expenses.gdb using the template file exp.dbf  
+		It will also print the version of the Interbase Access method used.
+
+	OR
+
+        gconv -d expenses.gdb -t exp.dbf -f expense.txt -c
+
+		This will check the info in expense.txt and report the 
+		maximum size of each field.  It will NOT store any data
+		into the expenses.gdb database.
+
+	OR
+
+        gconv  
+                The program will prompt for the database name, template file 
+		name, and name of the ASCII file containing the data to be loaded.
+
+
+	NOTE: The current maximum number of fields is 100 with the maximum length of
+		an input record of 3072 bytes.
+
+
+An example of a Conversion template file 
+
+   --------------- CUT HERE -------------------------------
+
+/* this is an initial comment for the top of the conversion template */
+expenses
+
+/* Define type of ASCII file                     */
+/*                                               */
+/* 1 - Fixed length fields                       */
+/* 2 - Fields separated by single character      */
+/* 3 - Fields separated by double quotes         */
+/* 4 - Fields separated by double quotes & comma */
+/* 5 - Fields on separate lines (1 per field)    */
+
+2,','
+
+/* define fields, order, and fixed lengths */
+
+exp_date,8
+description,30
+amount,10
+type,1
+time,1
+
+   --------------- CUT HERE -------------------------------
+
+Notes on Conversion Template file:
+
+        1) Comment lines can be included as long as they start with /*.
+        2) Blank lines are also allowed for readability but will be
+                ignored by gconv.
+
+RULES on Conversion Template file:
+
+        1)      First valid line (non-comment or non-blank) must contain
+                the name of the database relation that the data will
+                be inserted into.
+
+
+
+RULES on Conversion Template file (continued):
+
+        2)      The second valid line must contain the file type code. For
+                the file type code of 2 (SINGLE) you must supply a separator 
+                character encased by single quotes which has to be preceded 
+                by a comma.  (Example:  2,'~').
+
+                The valid file type codes are:
+
+                        1 - Fixed length fields
+
+                                example:  william    brice    boston  ma
+                                          jonathan   smithson boston  ma
+
+                        2 - Fields are separated by a single character
+
+                                example:  william,brice,boston,ma
+                                          jonathan,smithson,boston,ma
+
+                        3 - Fields are separated by double quotes around fields
+
+                                example:  "william""brice""boston""ma"
+                                          "jonathan""smithson""boston""ma"
+
+                        4 - Fields are separated by double quotes around fields and
+                                by commas
+
+                                example:  "william","brice","boston","ma"
+                                          "jonathan","smithson","boston","ma"
+
+
+                        5 - Fields are placed one field per line
+
+                                example:  william    
+                                          brice    
+                                          boston  
+                                          ma
+                                          jonathan   
+                                          smithson 
+                                          boston  
+                                          ma
+
+        3)        If BLOBS are to be used AND a string other than the default "[EOB]"
+                  is to be used, then the third valid line must contain the token BLOB
+                  followed by a comma and that followed by the end of blob string.
+                  Example: BLOB,"***"
+
+                  NOTE:    the end of blob string must be enclosed within double quotes
+                           and MUST follow immediately after the comma.  No spaces are
+                           allowed.
+
+        3a)       If ARRAYS are to be used AND a string other than the default "[EOA]"
+                  is to be used, then the third valid line must contain the token ARRAY
+                  followed by a comma and that followed by the end of blob string.
+                  Example: ARRAY,"***"
+
+                  NOTE:    the end of array string must be enclosed within double quotes
+                           and MUST follow immediately after the comma.  No spaces are
+                           allowed.
+		  Data lines for arrays must have all of the dimensions specified seperated
+		  by a comma with the data value in text format following the last comma.
+
+		  Example: 0,0,0,1
+
+	3b)	  If ARRAYS are used in the data file and the element lower bound is
+		  different from the database's lower bound, then you must include the
+		  arrays lower bound following the field. If the database had a field
+		  named TMP_ARRAY and it's lower bound were 1 and the data for the array
+		  in the file used 0, then the field definition in the template file 
+		  would be as follows:
+
+		  Example: TMP_ARRAY,0
+
+		  This would tell gconv that for the field TMP_ARRAY, the data will use
+		  0 to signify the lower bound of the array rather the database's lower
+		  bound of 1.
+
+        4)        The remaining lines are for the names of the fields in the
+                  relation name on line 1 in the order that they appear in the ASCII 
+                  file.  If the ASCII file type is Fixed length fields then an 
+                  additional parameter that is required is the length of the field in 
+                  the ASCII file, NOT the length of the field in the database.
+
+        5)        All records in the ASCII file must be on one physical line terminated
+                  by a RETURN.
+
+        6)        Blank lines are not allowed in the ASCII file.

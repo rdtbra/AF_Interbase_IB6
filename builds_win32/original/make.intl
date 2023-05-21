@@ -1,0 +1,90 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- INTL MAKEFILE ---------------------------------
+#	This makefile builds the international objects.
+#	
+#	There is one main rule here:
+#		intl.rsp - bring the intl objects and responce file up to date
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+INTL_FILES1=	ld.c cv_narrow.c \
+		cs_narrow.c  lc_ascii.c   lc_narrow.c lc_latin1.c lc_dos.c \
+		cs_unicode.c lc_unicode.c cs_utffss.c \
+		cs_jis.c     cv_jis.c     lc_jis.c    \
+		cs_big5.c    cv_big5.c    lc_big5.c   \
+		cs_gb2312.c  cv_gb2312.c  lc_gb2312.c \
+		cs_ksc.c     cv_ksc.c     lc_ksc.c
+
+INTL_FILES2=	ld2.c
+
+INTL_FILES=	$(INTL_FILES1) $(INTL_FILES2)
+
+INTL_OBJS1=	$(INTL_FILES1:.c=.obj)
+INTL_OBJS2=	$(INTL_FILES2:.c=.obj)
+
+#--------------------------------------------------------------------------------
+
+intl.rsp:	$(.path.obj)\intl.rsp
+
+$(.path.obj)\intl.rsp:	$(INTL_OBJS1) $(INTL_OBJS2) 
+
+	$(RM) $(.path.obj)\intl.rsp
+	&echo $(ROOT)\intl\$** >> $(.path.obj)\intl.rsp
+
+gdsintl.dll:	gdsintl_$(COMPILER).dll
+	$(TOUCH) gdsintl.dll
+
+gdsintl_ms.dll: $(INTL_OBJS1)
+	-$(RM) gdsintl.dll
+	-$(RM) gdsintl.lib
+	$(IMPLIB) -out:$(.path.obj)\gds_temp.lib @&&!
+$**
+!
+	$(IMPLIB) -out:$(.path.obj)\gdsintl.lib -def:gdsintl.bind $(.path.obj)\gds_temp.lib
+	$(LINK) $(ROOT)\jrd\$(.path.obj)\version_95.res $(LINK_OPTS) -out:$(.path.obj)\gdsintl.dll @&&!
+-dll -entry:_CRT_INIT$(DLLENTRY) 
+$(.path.obj)\gds_temp.lib $(.path.obj)\gdsintl.exp $(CONLIBSDLL)
+!
+	$(RM) gds_temp.lib
+	$(RM) gdsintl.exp
+	$(TOUCH) gdsintl_ms.dll
+
+gdsintl_bc.dll: $(INTL_OBJECTS1)
+	-$(RM) gdsintl.dll
+	-$(RM) gdsintl.lib
+	-$(RM) tmpintl.bind
+	sed -e 's/DATA READ WRITE/DATA MULTIPLE/' \
+		-e 's/LIBRARY gdsintl/LIBRARY gdsintl INITINSTANCE/' \
+		-e 's/ LD_lookup/ _LD_lookup/' gdsintl.bind > tmpintl.bind
+	$(LINK) -Tpd -ap -c $(LINK_OPTS) -w-inq -x /Lc:\bc4\lib c0d32 \
+		ld.obj+cv_narrow.obj+cs_narrow.obj+lc_ascii.obj+lc_narrow.obj+lc_latin1.obj+lc_dos.obj+cs_unicode.obj+lc_unicode.obj+cs_utffss.obj+cs_jis.obj+cv_jis.obj+lc_jis.obj,\
+		gdsintl.dll,,import32 cw32mt,tmpintl.bind
+	implib gdsintl.lib gdsintl.dll
+	$(MV) gdsintl.dll ..\interbase\bin
+	$(RM) gdsintl.dll
+	$(RM) gdsintl.lib
+	$(RM) tmpintl.bind
+	$(TOUCH) gdsintl_bc4.dll
+
+!if $d(INCLUDE_DEPENDS_MAK)
+!include depends.mak
+!endif
+

@@ -1,0 +1,30 @@
+Two Wollongong TCP configuration files must be modified so that
+the InterBase TCP services may be recognized: "servers.dat" and
+"services.".
+
+$ type [.netdist.etc]servers.dat
+#
+#       This is the internet server configuration file.  It is read by
+#       the internet server program on startup to configure the various
+#       servers.  Your site will include many other entries; this list
+#	only includes a sample of the InterBase-required entry.
+#
+# Interbase Database Servers
+service-name    GDS_inet
+program         sys$system:gds_inet_server.exe
+socket-type     SOCK_STREAM
+socket-options  SO_ACCEPTCONN | SO_KEEPALIVE
+socket-address  AF_INET , 3050
+working-set     500
+INIT            TCP_Init
+LISTEN          TCP_Listen
+CONNECTED       TCP_Connected
+SERVICE         Run_Program
+
+$ type [.netdist.etc]services.
+#
+# Network services, Internet style
+# All that is included here is the InterBase-required entry.
+#
+gds_db          3050/tcp
+#

@@ -1,0 +1,148 @@
+10	%TITLE "TEST"
+!  The contents of this file are subject to the Interbase Public
+!  License Version 1.0 (the "License"); you may not use this file
+!  except in compliance with the License. You may obtain a copy
+!  of the License at http://www.Inprise.com/IPL.html
+!
+!  Software distributed under the License is distributed on an
+!  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+!  or implied. See the License for the specific language governing
+!  rights and limitations under the License.
+!
+!  The Original Code was created by Inprise Corporation
+!  and its predecessors. Portions created by Inprise Corporation are
+!  Copyright (C) Inprise Corporation.
+!
+!  All Rights Reserved.
+!  Contributor(s): ______________________________________.
+
+	! CENSUS REPORT 
+
+	! Include the SQL Communications Area 
+	EXEC SQL
+		INCLUDE SQLCA
+
+	! Set up to catch SQL errors.
+	EXEC SQL
+		WHENEVER SQLERROR GO TO 99
+
+
+	! Set up estimated data if successful then do report 
+	CALL SETUP
+	IF SQLCODE => 0 THEN CALL CENSUS_REPORT END IF
+
+	! Undo estimated census data 
+	EXEC SQL
+		ROLLBACK
+
+	! Output error information if any
+99	IF SQLCODE <> 0 THEN CALL PRINT_ERROR END IF
+	END
+
+200	SUB PRINT_ERROR
+	! Print out error message 
+
+	! Include the SQL Communications Area 
+	EXEC SQL
+		INCLUDE SQLCA
+
+	PRINT 'Data base error, SQLCODE = ', SQLCODE
+	CALL GDS__PRINT_STATUS (GDS__STATUS() BY REF)
+	EXIT SUB
+	END SUB
+
+300	SUB SETUP
+	! Put in estimated data for missing 1960 & 1970 census data.
+	! Return 1 if successful, 0 otherwise.
+
+	! Include the SQL Communications Area 
+	EXEC SQL
+		INCLUDE SQLCA
+
+	! Set up to catch SQL errors.
+	EXEC SQL
+		WHENEVER SQLERROR GO TO 399
+
+	! Replace missing 1960 census data with estimates
+
+	EXEC SQL &
+		UPDATE POPULATIONS &
+		SET CENSUS_1960 = 0.3 * (CENSUS_1980 - CENSUS_1950) &
+		WHERE CENSUS_1960 IS NULL
+
+	! Replace missing 1970 census data with estimates
+
+	EXEC SQL &
+		UPDATE POPULATIONS &
+		SET CENSUS_1970 = 0.65 * (CENSUS_1980 - CENSUS_1950) &
+		WHERE CENSUS_1970 IS NULL
+
+	EXIT SUB
+
+	! Error return 
+399	CALL PRINT_ERROR
+	EXIT SUB
+	END SUB
+
+400	SUB CENSUS_REPORT
+
+	! Declare variables to receive data retrieved by SQL commands 
+	DECLARE LONG POP_50, POP_60, POP_70, POP_80
+	DECLARE STRING STNAME
+
+	! Include the SQL Communications Area 
+	EXEC SQL
+		INCLUDE SQLCA
+
+	! Set up to catch SQL errors.
+	EXEC SQL
+		WHENEVER SQLERROR GO TO 499
+
+	! Declare cursor for use in retrieving state/census data 
+        EXEC SQL &
+		DECLARE C CURSOR FOR &
+		SELECT STATE_NAME, CENSUS_1950, CENSUS_1960, &
+			CENSUS_1970, CENSUS_1980 &
+		FROM STATES S, POPULATIONS P &
+		WHERE S.STATE = P.STATE &
+		ORDER S.STATE_NAME
+
+	! Open cursor for use in retrieving state/census data 
+	EXEC SQL &
+		OPEN C
+
+	! Print report header 
+        PRINT '	STATE                  '; &
+		'               POPULATION'
+	PRINT '                               1950'; &
+		'          1960          1970          1980'
+
+	! Retrieve first set of state/census data 
+	EXEC SQL &
+		FETCH C INTO :STNAME, :POP_50, :POP_60, :POP_70, :POP_80
+
+	! Until end of data stream is reached, print out current set
+	! of data and then fetch next set 
+	WHILE SQLCODE = 0
+                PRINT STNAME;
+                PRINT USING '############'; POP_50;
+                PRINT USING '##############'; POP_60;
+                PRINT USING '##############'; POP_70;
+                PRINT USING '##############'; POP_80
+
+		! Retrieve next set of state/census data 
+		EXEC SQL &
+			FETCH C INTO :STNAME, :POP_50, :POP_60, &
+				 :POP_70, :POP_80
+		NEXT
+
+	! Close cursor
+	EXEC SQL &
+		CLOSE C
+
+	EXIT SUB
+
+	! Error return 
+499	CALL PRINT_ERROR
+	EXIT SUB
+	END SUB

@@ -1,0 +1,160 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+.SUFFIXES: .bin .o .c
+.c.o:
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(CFLAGS_PYXIS) $<
+.c.bin:
+	$(CC) -c $(PIC_FLAGS) $(VERSION_FLAG) -o $*_temp.o $<
+	$(MV) $*_temp.o $*.bin
+
+GPRE=		source/interbase/bin/gpre
+GPRE_FLAGS=	-r -m -z -n
+LIBPYXIS=	source/interbase/lib/gds_pyxis.a
+
+JRD_LINK=
+
+PYXIS_HEADERS=		pyxis.h all.h scr.h blk.h
+PHASE2_OBJECTS=		allp.o altp.o debug.o edit.o menu.o movp.o phase2.o \
+	phase3.o picstr.o pyxis.o save.o scr.o \
+	$(PYXIS_MISC_OBJECTS)
+PYXIS_P_OBJECTS=	allp.bin altp.bin cdm.bin debug.bin edit.bin \
+	menu.bin movp.bin phase2.bin phase3.bin picstr.bin \
+	pyxis.bin save.bin scr.bin vt100.bin
+
+objects:	$(PYXIS_OBJS) $(PYXIS_P_OBJS) $(PYXIS_LIBRARY)
+
+pyxis_objects:	$(PHASE2_OBJECTS)
+	-$(RM) pyxis_objects
+	$(TOUCH) pyxis_objects
+	$(CHMOD_6) pyxis_objects
+
+pyx_p_objects:	$(PYXIS_P_OBJECTS)
+	-$(RM) pyxis_objects pyx_p_objects
+	$(TOUCH) pyxis_objects pyx_p_objects
+	$(CHMOD_6) pyxis_objects pyx_p_objects
+
+pyxlib.o:	$(PHASE2_OBJECTS)
+	-$(RM) pyxlib.o
+	ld -r $(PHASE2_OBJECTS) $(SCREEN_LIBS) -o pyxlib.o
+	$(CHMOD_6) pyxlib.o
+
+pyxislib:	$(PHASE2_OBJECTS)
+	-$(RM) pyxislib
+	/com/bind <bind_pyxis
+	$(CHMOD_7) pyxislib
+	$(MV) pyxislib source/interbase/lib/pyxislib
+	$(TOUCH) pyxislib
+	$(CHMOD_6) pyxislib
+
+pyxislib.lib:	$(PHASE2_OBJECTS)
+	-$(RM) pyxislib.lib
+	/com/lbr -create pyxislib.lib $(PHASE2_OBJECTS)
+	$(CHMOD_6) pyxislib.lib
+
+libpyxis.a:	pyxis_objects
+	-$(RM) libpyxis.a
+	$(AR) libpyxis.a $(PHASE2_OBJECTS)
+	-ranlib libpyxis.a
+	$(CHMOD_6) libpyxis.a
+	$(MV) libpyxis.a $(LIBPYXIS)
+	$(TOUCH) libpyxis.a
+	$(CHMOD_6) libpyxis.a
+
+scr_libs.o:
+	-$(RM) scr_libs.o
+	ld -r -u _endwin -u _tgetent -u _tgetflag -u _tgetent -u _tgoto \
+	-u _initscr -u _tputs -u _waddstr -u _wclear -u _wgetch -u _wrefresh \
+	-u _wstandend -ltermlib -lcurses -o scr_libs.o
+	$(CHMOD_6) scr_libs.o
+
+scr_libs_si.o:
+	-$(RM) scr_libs_si.o
+	ld -r -u endwin -u tgetent -u tgetflag -u tgetent -u tgoto \
+	-u initscr -u tputs -u waddstr -u wclear -u wgetch -u wrefresh \
+	-u wstandend -ltermlib -lcurses -o scr_libs_si.o
+	$(CHMOD_6) scr_libs_si.o
+
+adm.o:		adm.c pyxis.h scr.h
+allp.o:		allp.c $(PYXIS_HEADERS)
+altp.o:		altp.c 
+blk.o:		blk.c $(PYXIS_HEADERS)
+cdm.o:		cdm.c pyxis.h scr.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) cdm.c
+	ld -r cdm.o $(LIB_TYPE) $(SCREEN_LIBS) -o cdmfoo.o
+	$(MV) cdmfoo.o cdm.o
+debug.o:	debug.c pyxis.h scr.h attributes.h
+	$(CP) debug.c debugfoo.c
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) debugfoo.c
+	$(MV) debugfoo.o debug.o
+	-$(RM) debugfoo.c
+edit.c:		edit.e
+edit.o:		edit.c pyxis.h phase2.h field_edit.h size_form.h form_name.h \
+		field_name.h enumerations.h 
+fred.c:		fred.e
+fred.o:		fred.c source/jrd/license.h pyxis.h size_form.h file_name.h \
+		form_name.h 
+menu.o:		menu.c pyxis.h
+movp.c:		source/qli/mov.c
+	$(CP) source/qli/mov.c movp.c
+movp.o:		movp.c pyxis.h source/jrd/kanji.h source/jrd/gds_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) -DPYXIS movp.c
+phase1.h:	attributes.h
+	$(TOUCH) phase1.h
+phase2.o:	phase2.c pyxis.h phase2.h
+phase3.o:	phase3.c pyxis.h phase2.h 
+picstr.c:	source/qli/picstr.c
+	$(CP) source/qli/picstr.c picstr.c
+picstr.o:	picstr.c pyxis.h source/jrd/gds_proto.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) -DPYXIS picstr.c
+pyxis.h:	keys.h phase1.h blk.h source/jrd/dsc.h source/qli/format.h
+	$(TOUCH) pyxis.h
+pyxis.o:	pyxis.c pyxis.h
+save.c:		save.e
+save.o:		save.c pyxis.h form_ddl.h 
+scr.o:		scr.c pyxis.h scr.h
+sun_ftn_pyxis.o:	sun_ftn_pyxis.c 
+vdm.o:		vdm.c pyxis.h scr.h
+vt100.o:	vt100.c pyxis.h scr.h
+	$(CC) -c $(CFLAGS) $(VERSION_FLAG) $(VT100_FLAGS) vt100.c
+
+$(GDSSHR) $(GDSLIB): $(PYXIS_LIBRARY)
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+$(JRD_LINK):
+	$(SH) '$(CD) source/jrd; $(MAKE) CFLAGS="$(CFLAGS)" SYSTEM="$(SYSTEM)" $(@F)'
+
+allp.bin:	allp.o
+altp.bin:	altp.o
+cdm.bin:	cdm.o
+debug.bin:	debug.o
+edit.bin:	edit.o
+menu.bin:	menu.o
+movp.bin:	movp.o
+	$(CP) movp.c movpfoo.c
+	$(CC) -c $(PIC_FLAGS) $(VERSION_FLAG) -DPYXIS movpfoo.c
+	$(MV) movpfoo.o movp.bin
+	-$(RM) movpfoo.c movpfoo.o
+phase2.bin:	phase2.o
+phase3.bin:	phase3.o
+picstr.bin:	picstr.o
+	$(CP) picstr.c picstrfoo.c
+	$(CC) -c $(PIC_FLAGS) $(VERSION_FLAG) -DPYXIS picstrfoo.c
+	$(MV) picstrfoo.o picstr.bin
+	-$(RM) picstrfoo.c picstrfoo.o
+pyxis.bin:	pyxis.o
+save.bin:	save.o
+scr.bin:	scr.o
+vt100.bin:	vt100.o

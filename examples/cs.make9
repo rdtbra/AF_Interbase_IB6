@@ -1,0 +1,85 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+# cs_makefile - a makefile for the Character set conversion 
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c:
+	gpre -z -e -n $<
+.c.o:
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the example:
+#	make -f make.cs new
+#	make -f make.cs 
+#
+#  The sed script below will modify cs_convert.gdl to reflect the 
+#  location of the example user defined functions library.
+#  
+CFLAGS=		+z
+FUNCOBJ=	cs_convert.o 
+FUNCLIB=	CONVERT
+INTERBASE=	/usr/interbase
+GDEF=		$(INTERBASE)/bin/gdef
+QLI=		$(INTERBASE)/bin/qli
+EXAMPLES=	$(INTERBASE)/intl
+
+todo:	
+	echo First do "make -f make.cs new" > todo
+	echo Then  do "make -f make.cs demo" >> todo
+
+$(FUNCLIB): 	$(FUNCOBJ) 
+	ld -b $(FUNCOBJ) -lm -o $(FUNCLIB)
+	touch $(FUNCLIB)
+
+cs_convert.o:	cs_convert.c 437_to_865.h 437_to_lat1.h 865_to_lat1.h
+
+new:
+	cp $(EXAMPLES)/cs_convert.c .
+	cp $(EXAMPLES)/437_to_865.h .
+	cp $(EXAMPLES)/437_to_lat1.h .
+	cp $(EXAMPLES)/865_to_lat1.h .
+	cp $(EXAMPLES)/products.lat1 .
+	cp $(EXAMPLES)/users.lat1 .
+	cp $(EXAMPLES)/clients.437 .
+	cp $(EXAMPLES)/contacts.437 .
+	cp $(EXAMPLES)/cs_load.gdl .
+	cp $(EXAMPLES)/cs_demo.gdl .
+	cp $(EXAMPLES)/cs_load.qli .
+	chmod 666 cs_convert.c *.gdl *.h *.437 *.lat1 *.qli
+
+demo:	cs_demo.gdb
+
+cs_demo.gdb:	$(FUNCLIB)
+	sed -e s:CONVERT_MODULE:`pwd`/$(FUNCLIB):g cs_demo.gdl | $(GDEF)
+	$(GDEF) cs_load.gdl
+	$(QLI) -a cs_load.qli
+
+clean:
+	-rm todo
+	-rm cs_convert.c
+	-rm 437_to_865.h 
+	-rm 437_to_lat1.h 
+	-rm 865_to_lat1.h 
+	-rm cs_demo.gdl cs_demo.gdb
+	-rm cs_load.gdl cs_load.gdb cs_load.qli
+	-rm users.lat1 products.lat1
+	-rm clients.437 contacts.437
+	-rm $(FUNCLIB)
+	-rm $(FUNCOBJ)

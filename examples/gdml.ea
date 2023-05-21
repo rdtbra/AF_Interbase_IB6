@@ -1,0 +1,218 @@
+---  The contents of this file are subject to the Interbase Public
+---  License Version 1.0 (the "License"); you may not use this file
+---  except in compliance with the License. You may obtain a copy
+---  of the License at http://www.Inprise.com/IPL.html
+---
+---  Software distributed under the License is distributed on an
+---  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+---  or implied. See the License for the specific language governing
+---  rights and limitations under the License.
+---
+---  The Original Code was created by Inprise Corporation
+---  and its predecessors. Portions created by Inprise Corporation are
+---  Copyright (C) Inprise Corporation.
+---
+---  All Rights Reserved.
+---  Contributor(s): ______________________________________.
+
+WITH basic_io, interbase;
+use interbase;
+
+PROCEDURE gdml IS
+
+---
+--- It's time to update and print the tourist information we have for New
+--- England and the Pacific Northwest.  This program first prints and
+--- optionally modifies the tourist information for each state, then creates 
+--- a database that is a guide to Northern US seacoasts.
+---
+
+DATABASE ATLAS = FILENAME "atlas.gdb";
+DATABASE GUIDE = FILENAME "c_guide.gdb";
+
+	state_count: integer := 8;
+	SUBTYPE state_t IS BASED_ON ATLAS.STATES.STATE;
+	TYPE state_list_t IS array (integer RANGE 1..state_count) OF state_t;
+	state_list	: state_list_t :=
+	("ME  ", "NH  ", "MA  ", "RI  ", "CT  ", "OR  ", "WA  ", "AK  ");
+
+
+
+PROCEDURE clean_up (states_list : state_list_t) IS
+
+--- **************************************
+---
+---   c l e a n _ u p
+---
+--- **************************************
+---
+--- Functional description
+---
+--- At the users' choice, edit the tourism blob for selected states,
+--- load a new one from a named file, or accept text from standard input
+--- **************************************
+
+	filename	: string(1..40);
+	choice		: character;
+	update_tr	: interbase.transaction_handle;
+	state		: state_t;
+	in_length	: natural;
+	int_length	: interbase.isc_short;
+ 
+BEGIN
+
+--- start a named transaction for update, reserving the necessary relations
+
+	update_tr := 0;
+	START_TRANSACTION update_tr CONCURRENCY READ_WRITE 
+		RESERVING ATLAS.TOURISM FOR WRITE,
+		ATLAS.STATES FOR READ;
+
+
+	FOR i IN 1..state_count LOOP
+		state := states_list(i); 
+		FOR (TRANSACTION_HANDLE update_tr) S IN ATLAS.STATES 
+			CROSS T IN ATLAS.TOURISM OVER STATE WITH S.STATE = state
+
+			basic_io.put ("Here's the information on ");
+			basic_io.put (s.state_name);
+			basic_io.new_line;
+			interbase.blob_display (T.GUIDEBOOK, ATLAS, update_tr, "guidebook", 9);
+                	basic_io.put ("Is this information up to date? (Y/N) ");
+			basic_io.get (choice);
+                        basic_io.skip_line;
+			IF (choice /= 'y') AND  (choice /= 'Y') THEN
+				MODIFY T USING
+		 			basic_io.put ("Enter F to update from a file, E to edit the description ");
+					basic_io.get (choice); 
+		                        basic_io.skip_line;
+					IF (choice = 'F') OR (choice = 'f') THEN
+						basic_io.put ("Enter full name of input file ");
+						basic_io.get_line (filename, in_length);
+						int_length := interbase.isc_short (in_length);
+						interbase.blob_load (T.GUIDEBOOK, ATLAS, update_tr, filename, 
+							int_length);
+					ELSIF (choice = 'E') OR (choice = 'e') THEN
+						interbase.blob_edit (T.GUIDEBOOK, ATLAS, update_tr, "guidebook", 9);
+					ELSE
+						basic_io.put ("Enter new information from standard input.  ");
+        		  			basic_io.put ("Terminate with /");
+						basic_io.new_line;
+						CREATE_BLOB NEW IN T.GUIDEBOOK;
+						NEW.LENGTH := NEW.SEGMENT'length(1);
+						LOOP
+							basic_io.get_line (NEW.SEGMENT, in_length);
+							EXIT WHEN (in_length = 1) AND (NEW.SEGMENT(1) = '/');
+							in_length := in_length + 1;
+							NEW.LENGTH := interbase.isc_ushort (in_length);
+							NEW.SEGMENT (in_length) := ASCII.LF;
+							PUT_SEGMENT NEW;
+						END LOOP;
+						CLOSE_BLOB NEW;
+					END IF;
+				END_MODIFY;
+			END IF;
+		END_FOR;
+	END LOOP;
+	COMMIT update_tr;
+END clean_up;
+
+
+
+
+PROCEDURE transfer_data (states_list : state_list_t) IS
+
+---
+--- **************************************
+---
+---   t r a n s f e r _ d a t a
+---
+--- **************************************
+---
+--- Functional description
+---
+--- Move the tourism information for selected
+--- states to the guide_book database.
+--- **************************************
+
+	trans_tr	: interbase.transaction_handle;
+	state		: state_t;
+
+BEGIN
+	trans_tr := 0;
+
+	START_TRANSACTION trans_tr CONCURRENCY READ_WRITE
+		RESERVING ATLAS.TOURISM FOR READ,
+		GUIDE.TOURISM FOR WRITE;
+
+
+	FOR i in 1..state_count LOOP
+		state := states_list(i);
+		FOR (TRANSACTION_HANDLE trans_tr) S IN ATLAS.STATES 
+			CROSS T IN ATLAS.TOURISM OVER STATE WITH S.STATE = state
+
+			STORE (TRANSACTION_HANDLE trans_tr) NEW IN GUIDE.TOURISM USING
+				NEW.STATE_NAME := s.state_name;
+				NEW.STATE := s.state;
+				NEW.CITY := t.city;
+	          		NEW.ZIP := t.zip; 
+
+				--- One way to copy a blob 
+				CREATE_BLOB N_ADDR IN NEW.OFFICE;
+				FOR O_ADDR IN T.OFFICE
+					N_ADDR.SEGMENT := O_ADDR.SEGMENT;
+					N_ADDR.LENGTH := O_ADDR.LENGTH;
+					PUT_SEGMENT N_ADDR;
+				END_FOR;
+				CLOSE_BLOB N_ADDR;
+
+				--- another way to copy a blob 
+				interbase.blob_dump (T.GUIDEBOOK, ATLAS, trans_tr, "temp.tmp", 8);
+				interbase.blob_load (NEW.GUIDEBOOK, GUIDE, trans_tr, "temp.tmp", 8);
+			END_STORE;
+		END_FOR;
+	END LOOP;
+
+	PREPARE trans_tr
+		ON_ERROR
+			basic_io.put ("Error preparing a multi_database transaction");
+			basic_io.put ("Please manually rollback limbo transactions in GUIDE and ATLAS");
+			ROLLBACK TRANS_TR;
+			RETURN;
+		END_ERROR;
+
+
+	COMMIT trans_tr
+		ON_ERROR
+			basic_io.put ("Error committing a prepared multi_database transaction");
+			basic_io.put ("Please manually commit limbo transactions in GUIDE and ATLAS");
+		END_ERROR;
+END transfer_data;
+
+BEGIN --- gdml
+---
+--- **************************************
+---
+---   g d m l
+---
+--- **************************************
+---
+--- Functional description
+---
+--- The main routine establishes a list of
+--- states from the main atlas database.  Its
+--- subroutines allow the user to update guidebook 
+--- descriptions of those states, and store them
+--- in a separate database.
+--- **************************************)
+
+READY ATLAS;
+READY  "nc_guide.gdb" AS GUIDE;
+
+clean_up (state_list);
+transfer_data (state_list);
+
+FINISH ATLAS;
+FINISH GUIDE;
+END gdml;
+

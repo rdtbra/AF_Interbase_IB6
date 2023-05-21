@@ -1,0 +1,121 @@
+CITY_POPS:	PROCEDURE OPTIONS (MAIN);
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+/*************************************************************
+*	This program illustrates the use of sub-forms.
+*	A form is displayed and the user inputs a state code.
+*	Then the cities in that state are displayed along with
+*	their populations. The user can then update the populations
+*	if desired, and go on to choose a state again. When
+*	no state code is entered, the program will ask whether
+*	or not to commit the updates and then exits.
+*************************************************************/
+
+DATABASE DB = 'atlas.gdb'
+
+    DECLARE ANSWER CHARACTER(1);
+    DECLARE FOUND FIXED BIN (1);
+
+/* Create forms window */
+GDS__HEIGHT = 20;
+GDS__WIDTH = 80;
+CREATE_WINDOW;
+
+/* Open database and start transaction */
+READY;
+START_TRANSACTION;
+
+/* Loop until user leaves form without filling in a state code */
+FOUND = 1;
+L1:  DO;
+	FOR FORM F IN CITY_POPULATIONS
+
+		/** Set instructional message to be displayed in form.
+		 * If user just entered state code for a non-existant state,
+		 * say so in the message. 
+		 */
+		IF (FOUND = 1) THEN
+			DO;
+			F.TAG = 'Enter State Code (enter nothing to exit)';
+			FOUND = 0;
+			END;
+		else
+			F.TAG = 'State not found; Enter State Code (enter nothing to exit)';
+
+		/* Display form and await entering of state code */
+		DISPLAY F DISPLAYING TAG ACCEPTING STATE;
+        	IF (F.STATE.STATE = PYXIS__OPT_NULL) THEN
+                    DO;
+                    CALL PYXIS__POP_WINDOW (GDS__WINDOW);
+                    GO TO L2;
+                    END;
+
+		/* Look for state */
+		FOR S IN STATES WITH S.STATE = F.STATE
+
+			/* Note that state was found */
+			FOUND = 1;
+
+			/* Put city information into subform */
+			FOR C IN CITIES WITH C.STATE = S.STATE SORTED BY C.CITY
+				PUT_ITEM FC IN F.CITY_POP_LINE
+					FC.CITY = C.CITY;
+					FC.POPULATION = C.POPULATION;
+				END_ITEM;
+			END_FOR;
+
+			/* Put state information into form */
+			F.STATE = S.STATE;
+			F.STATE_NAME = S.STATE_NAME;
+			F.TAG = 'Update populations if needed';
+
+			/* Display current form and allow populations to be updated */
+			DISPLAY F DISPLAYING STATE, STATE_NAME, CITY_POP_LINE.CITY,
+				CITY_POP_LINE.POPULATION, TAG
+				ACCEPTING CITY_POP_LINE.POPULATION;
+
+			/* Perform modifications for any updated populations */
+			FOR_ITEM FC IN F.CITY_POP_LINE
+				IF (FC.POPULATION.STATE = PYXIS__OPT_USER_DATA) THEn
+					FOR C IN CITIES WITH C.CITY = FC.CITY
+						AND C.STATE = F.STATE
+						MODIFY C USING
+							C.POPULATION = FC.POPULATION;
+						END_MODIFY;	
+					END_FOR;
+			END_ITEM;
+		END_FOR;
+
+	END_FORM;
+	END;
+        GO TO L1;
+/* Make form go away */
+L2:  DELETE_WINDOW;
+
+/* Check to see whether or not to commit updates */
+PUT LIST ('Do you want to commit the updates (Y/N): ');
+GET LIST (ANSWER);
+IF (ANSWER = 'y') | (ANSWER = 'Y') THEN
+	COMMIT
+ELSE
+	ROLLBACK;
+
+/* Close down */
+FINISH;
+END;

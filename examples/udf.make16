@@ -1,0 +1,117 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+# udf_makefile - a makefile for the user-defined functions example
+# FOR UNIX SYSTEMS THAT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c:
+	gpre -z -e -n $<
+.c.o:
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the user-defined function example:
+#	make -f make.udf new
+#	make -f make.udf 
+#
+#  To run the user-defined funcction example:
+#  	1. Run udftest
+#	2. Run qli
+#	   a. ready atlas.gdb
+#	   b. list rdb$functions 
+# 	   c. use print statements to run them
+#	   d. test the upper function called
+#             from a trigger by storing a state with lower case abbreviation.
+#
+#  For your own functions:
+#	1. save a copy of make.udf, udf.c and udf.gdl.
+#	2. edit your copy of this makefile to:
+#		a. assign FUNCOBJ to equal your function object modules. 
+#		b. reference your database and your copy of udf.gdl 
+#		c. replace the udftest target with your test application
+#		(if you do not have a test application, just remove the 
+#		udftest target and have your database be the first target)
+#	3. edit your copy of udf.gdl to reference your database and functions. 
+#  
+#
+#  When you are satisfied with your testing, copy the user defined 
+#  shared functions library to /usr/interbase/lib. You will now have
+#  access to the user-defined functions once you have modified the
+#  udf.gdl file to reflect the new location of the user defined
+#  functions library...
+#	1. modify udf.gdl and replace FUNCLIB with the absolute
+#	   path and name of the library 
+#	   e.g. sed "s%FUNCLIB%/usr/interbase/lib/gdsfunc.so%" udf.gdl > udf_my.gdl
+#	        cp FUNCLIB /usr/interbase/lib/gdsfunc.so
+#	2. replace atlas.gdb with the name of your database in udf_my.gdl
+#	3. gdef -z udf_my.gdl to update your master database 
+#  The user-defined functions are now globally defined. Now remote processes
+#  have access to the user-defined functions. NOTE: user-defined functions
+#  are always performed locally.
+#  
+#  
+CFLAGS=		-O -K PIC -mt
+FUNCOBJ=	udf.o 
+FUNCGDB=	atlas.gdb
+SHRLIBS=	-lgdsmt
+FUNCLIB=	FUNCLIB
+
+udftest:	$(FUNCLIB) udftest.o
+	cc -g udftest.o $(SHRLIBS) -o udftest
+
+new:		
+	cp /usr/interbase/examples/v3/udftest.e .
+	cp /usr/interbase/examples/v3/udf.c .
+	cp /usr/interbase/examples/v3/udf.gdl .
+	cp /usr/interbase/examples/v3/udf_trig.gdl .
+	chmod 666 *.c *.e *.gdl 
+	gbak -r -z /usr/interbase/examples/v3/atlas.gbak atlas.gdb
+		
+functions:	functions.flag
+
+trigger:	trigger.flag
+	rm udf.com
+
+functions.flag: udf.gdl 
+	echo "#!/bin/sh" > udf.com
+	echo 'sed "s%FUNCLIB%./FUNCLIB%" udf.gdl > udf_use.gdl' >> udf.com
+	echo "gdef udf_use.gdl" >> udf.com
+	chmod 777 udf.com
+	./udf.com
+	echo "gdef'd udf.gdl" > functions.flag
+
+trigger.flag:	udf_trig.gdl
+	gdef -z udf_trig.gdl 
+	echo "gdef'd udf_trig.gdl" > trigger.flag
+
+$(FUNCLIB): 	$(FUNCOBJ) 
+	ld -G -Bsymbolic $(FUNCOBJ) $(SHRLIBS) -lc -o $(FUNCLIB)
+
+udf.o:		udf.c
+
+udftest.o:	udftest.c
+	cc -g -c udftest.c
+
+udftest.c:	atlas.gdb functions.flag trigger.flag udftest.e
+
+udf_trig.gdl udf.gdl udftest.e atlas.gdb: 
+	@echo "    TYPE: make -f make.udf new "
+	@echo "    to copy necessary files from /usr/interbase/examples"
+
+clean:	
+	rm -f udf* functions.flag trigger.flag FUNCLIB atlas.gdb

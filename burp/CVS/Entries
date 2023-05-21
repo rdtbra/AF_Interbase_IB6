@@ -1,0 +1,22 @@
+/backu_proto.h/1.2.2.2/Mon Jul 24 18:50:55 2000//TIB60_RELEASE
+/backup.e/1.3.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burp.c/1.3.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burp.def/1.2.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burp.h/1.4.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burp32.def/1.2.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burp_proto.h/1.2.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burpswi.h/1.2.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/burpwep.c/1.2.2.2/Mon Jul 24 18:50:56 2000//TIB60_RELEASE
+/canon_proto.h/1.2.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/canonical.c/1.3.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/depends.mak/1.2.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/makefile.mak/1.2.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/misc.c/1.3.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/misc_proto.h/1.2.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/mvol.c/1.3.2.2/Mon Jul 24 18:50:57 2000//TIB60_RELEASE
+/mvol_proto.h/1.2.2.2/Mon Jul 24 18:50:58 2000//TIB60_RELEASE
+/resto_proto.h/1.2.2.2/Mon Jul 24 18:50:58 2000//TIB60_RELEASE
+/restore.e/1.5.2.2/Mon Jul 24 18:50:58 2000//TIB60_RELEASE
+/spit.c/1.3.2.2/Mon Jul 24 18:50:58 2000//TIB60_RELEASE
+/spit.h/1.2.2.2/Mon Jul 24 18:50:58 2000//TIB60_RELEASE
+D

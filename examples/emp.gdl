@@ -1,0 +1,913 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+define database "emp.gdb"
+	page_size 2048;
+
+
+/*	Global Field Definitions	*/
+
+define field ADDRESS varying [30]
+	query_header "Address";
+define field AMOUNT long scale -2
+	query_header "Amount"
+	edit_string "$$$,$$$,999.99";
+define field BADGE short;
+define field BUDGET_SUBS long scale -2
+	query_header "Sub" / "Dept" / "Budget"
+	edit_string "$$$,$99,999.99";
+define field CHANGE_DATE date
+	query_header "Date" / "Changed";
+define field CITY varying [25]
+	query_header "City";
+define field COMMENTS blob segment_length 40 sub_type text;
+define field CONTACT varying [25]
+	query_header "Contact";
+define field CUSTNO short
+	query_header "Custno";
+define field CUSTOMER varying [25]
+	valid if (customer not missing)
+	query_header "Customer";
+define field DATE_NEEDED date
+	query_name NEED
+	query_header "Date" / "Needed";
+define field DATE_REVIEWED date;
+define field DEPARTMENT varying [25]
+	query_header "Department";
+define field DEPTNO char [3]
+	query_name DEPT
+	query_header "Deptno"
+	edit_string "xxx";
+define field DEPT_LEVEL char [1]
+	valid if (dept_level eq '1','2','3','4','5')
+	query_name DELEVL
+	query_header "Dept" / "Level";
+define field DUTIES blob segment_length 80
+	query_header "Duties";
+define field EMPNO short
+	query_header "Empno";
+define field EMP_COMMENTS blob segment_length 40 sub_type text;
+define field EXPLANATION blob segment_length 30 sub_type text;
+define field FIELD_OFFICE varying [15]
+	query_name OFFICE
+	query_header "Office";
+define field FIRST_NAME varying [10]
+	valid if (first_name not missing)
+	query_header "First Name";
+define field HEAD_DEPT char [3]
+	query_name HEAD
+	query_header "Head" / "Dept"
+	edit_string "xxx";
+define field HIGH_SALARY_RANGE long scale -2
+	query_name HIGH
+	query_header "High Range"
+	edit_string "$ZZZ,ZZZ,ZZ9.99";
+define field HIRE_DATE date
+	query_name HIRED
+	query_header "Date" / "Hired";
+define field JOB varying [5]
+	query_header "Job";
+define field JOB_TITLE varying [25]
+	query_name TITLE
+	query_header "Job Title";
+define field LAST_NAME varying [15]
+	valid if (last_name not missing)
+	query_header "Last Name";
+define field LEVEL char [1]
+	valid if (level = '1','2','3','4','5','6')
+	query_header "Level";
+define field LOW_SALARY_RANGE long scale -2
+	query_name LOW
+	query_header "Low Range"
+	edit_string "$ZZZ,ZZZ,ZZ9.99";
+define field MGRNO short
+	query_header "Mgrno";
+define field NEW_SALARY long scale -2
+	query_header "New Salary"
+	edit_string "$ZZZ,ZZZ,ZZ9.99";
+define field OFFICE varying [15]
+	query_header "Office";
+define field OLD_SALARY long scale -2
+	query_header "Old Salary"
+	edit_string "$ZZZ,ZZZ,ZZ9.99";
+define field ON_HOLD char [1]
+	valid if (on_hold = '*' or on_hold missing)
+	query_header "On" / "Hold";
+define field ORDER_DATE date
+	query_name ODATE
+	query_header "Order" / "Date";
+define field ORDER_STATUS varying [7]
+	valid if (order_status = 'shipped','booked','waiting','holding')
+	missing_value is "holding"
+	query_name STATUS
+	query_header "Order" / "Status";
+define field PAID char [1]
+	valid if (paid = '*' or paid missing)
+	query_header "Paid";
+define field PHONE_EXT char [3]
+	missing_value is "x-?"
+	query_name EXT
+	query_header "Phone" / "Ext"
+	edit_string "'x'xxx";
+define field PHONE_NO char [10]
+	query_name PHONE
+	query_header "Phone" / "No"
+	edit_string "(xxx)bxxx-xxxx";
+define field PO# char [8]
+	query_name PO
+	query_header "Purchase" / "Order #"
+	edit_string "xx-xx-xx-xx";
+define field PONUMB char [8]
+	query_name PO#
+	query_header "Purchase" / "Order #"
+	edit_string "xx-xx-xx-xx";
+define field POSITION char [2]
+	query_name POS
+	query_header "Position";
+define field PO_DATE date
+	query_name PODATE
+	query_header "PO Date";
+define field PRICE long scale -2
+	query_header "Price"
+	edit_string "$$$,$$$,999.99";
+define field PRODUCT varying [12]
+	query_header "Product";
+define field PROJ_DESC blob segment_length 80
+	query_name PDESC
+	query_header "Project" / "Description";
+define field PROJ_NAME varying [15]
+	query_name PNAME
+	query_header "Project" / "Name";
+define field PROJ_NO char [5]
+	query_name PROJNO
+	query_header "Project No"
+	edit_string "xx-x.xx";
+define field PYXIS$FORM blob segment_length 80
+	system_flag 3;
+define field PYXIS$FORM_NAME char [31]
+	system_flag 3;
+define field PYXIS$FORM_TYPE char [16]
+	system_flag 3;
+define field QLI$PROCEDURE blob segment_length 80 sub_type text
+	system_flag 2;
+define field QLI$PROCEDURE_NAME char [31]
+	system_flag 2;
+define field RATING char [1];
+define field RATING_DESCRIPTION varying [15];
+define field REBATE char [1]
+	valid if (rebate = '*' or rebate missing)
+	query_header "Rebate";
+define field REPORTS short
+	query_header "Reports"
+	edit_string "zz9";
+define field REQUIREMENTS blob segment_length 30 sub_type text
+	query_header "Requirements";
+define field REVIEWER short;
+define field SALARY long scale -2
+	query_header "Salary"
+	edit_string "$ZZZ,ZZZ,ZZ9.99";
+define field SALES_REP short
+	query_name REP
+	query_header "Sales" / "Rep";
+define field SEX char [1]
+	valid if (sex = 'F' or sex = 'M' or sex missing)
+	query_header "Sex";
+define field SHIPPED date
+	query_header "Shipped";
+define field SSN char [9]
+	query_header "Social" / "Security No"
+	edit_string "xxx-xx-xxxx";
+define field STATE varying [4]
+	query_name PROVINCE
+	query_header "State";
+define field SUPER short
+	query_name MGR
+	query_header "Mgr";
+define field TEAM_LEADER short
+	query_name TL
+	query_header "Team" / "Leader";
+define field TOTAL_SALES long
+	missing_value is 0
+	query_name TSALES
+	query_header "Total Sales"
+	edit_string "$z,zzz,zz9.99";
+define field TOTAL_VALUE long
+	query_name VALUE
+	query_header "Total Value"
+	edit_string "$z,zzz,zz9.99";
+define field UPDATER_ID varying [20]
+	query_name UPDATER
+	query_header "Updater";
+define field VENDOR varying [25]
+	valid if (vendor not missing)
+	query_header "Vendor";
+define field VERSION char [6]
+	query_header "Version"
+	edit_string "aa-ax.xa";
+define field ZIP_CODE char [5]
+	query_name ZIP
+	query_header "Zip"
+	edit_string "xxxxx";
+
+
+/*	Relation Definitions	*/
+
+
+define relation CUSTOMERS
+    CUSTNO	position 0,
+    CUSTOMER	position 1,
+    CONTACT	position 2,
+    ADDRESS	position 3,
+    CITY	position 4,
+    STATE	position 5,
+    ZIP_CODE	position 6,
+    PHONE_NO	position 7,
+    ON_HOLD	position 8;
+
+define relation DEPARTMENTS
+    DEPTNO	position 1,
+    DEPARTMENT	position 2,
+    MGRNO	position 3,
+    REPORTS	position 4,
+    HEAD_DEPT	position 5,
+    OFFICE	position 9,
+    PHONE_NO	position 10,
+    DEPT_LEVEL based on LEVEL	position 11;
+
+define relation EMPLOYEES
+    EMPNO	position 1,
+    LAST_NAME	position 3,
+    FIRST_NAME	position 4,
+    LEVEL	position 5,
+    JOB	position 6,
+    SALARY	position 7,
+    DEPTNO	position 8,
+    SUPER	position 9,
+    SEX	position 10,
+    HIRE_DATE	position 11,
+    SSN	position 12,
+    PHONE_EXT	position 13,
+    NAME varying [26] computed by (first_name | ' ' | last_name)	position 2;
+
+define relation EMPLOYEES_PROJECTS
+    EMPNO	position 0,
+    PROJ_NO	position 1,
+    DUTIES	position 2,
+    POSITION	position 3;
+
+define relation JOBS
+    JOB	position 1,
+    JOB_TITLE	position 2,
+    LEVEL	position 3,
+    LOW_SALARY_RANGE	position 4,
+    HIGH_SALARY_RANGE	position 5,
+    REQUIREMENTS	position 6;
+
+define relation MAX_EMP
+    EMPNO	position 0;
+
+define relation POSTAL_STATES
+    STATE	position 0;
+
+define relation PROJECTS
+    PROJ_NO	position 0,
+    PROJ_NAME	position 1,
+    PROJ_DESC	position 2,
+    TEAM_LEADER	position 3,
+    PRODUCT	position 4,
+    VERSION	position 5;
+
+define relation PYXIS$FORMS
+	system_flag 3
+    PYXIS$FORM_NAME	position 1
+	system_flag 3,
+    PYXIS$FORM_TYPE	position 2
+	system_flag 3,
+    PYXIS$FORM	position 3
+	system_flag 3;
+
+define relation QLI$PROCEDURES
+	system_flag 2
+    QLI$PROCEDURE_NAME	position 0
+	system_flag 2,
+    QLI$PROCEDURE	position 1
+	system_flag 2;
+
+define relation RATING
+    RATING	position 1,
+    RATING_DESCRIPTION	position 2,
+    EXPLANATION	position 3;
+
+define relation REVIEW
+    EMPNO	position 1,
+    REVIEWER	position 1,
+    RATING	position 2,
+    COMMENTS	position 3,
+    DATE_REVIEWED	position 4,
+    EMP_COMMENTS	position 5;
+
+define relation SALARY_HISTORY
+    EMPNO	position 0,
+    CHANGE_DATE	position 1,
+    OLD_SALARY	position 3,
+    NEW_SALARY	position 4,
+    UPDATER_ID	position 6,
+    PERCENT_CHANGE double computed by ((new_salary/old_salary) * 100)	position 5
+	query_header "Percentage" / "Change"
+	edit_string "999";
+
+define relation SALES
+    CUSTNO	position 2,
+    PONUMB	position 2,
+    SALES_REP	position 3,
+    ORDER_DATE	position 4,
+    TOTAL_VALUE	position 5,
+    DATE_NEEDED	position 6,
+    ORDER_STATUS	position 7,
+    PAID	position 8,
+    SHIPPED	position 9,
+    AGED long computed by ('today' - shipped)	position 3
+	query_header "Aged"
+	edit_string "zz9";
+
+define relation SALES_PEOPLE
+    EMPNO	position 0,
+    LAST_NAME	position 1,
+    FIRST_NAME	position 2,
+    MGR based on SUPER	position 3
+	query_name MGR;
+
+define relation SALES_PERF
+    EMPNO	position 1,
+    FIRST_NAME	position 2,
+    LAST_NAME	position 3,
+    SALARY	position 4,
+    TOTAL_SALES	position 5,
+    QUOTA long scale -3 computed by (salary * 4.5)	position 6
+	query_header "Quota"
+	edit_string "$,$$$,999.99",
+    TO_DATE double computed by (total_sales / quota)	position 7
+	query_header "To Date"
+	edit_string "z.99'%'";
+
+
+/*	View Definitions	*/
+
+
+define view DEPT_BUDGET of d in departments
+        D.DEPTNO	position 1,
+    D.DEPARTMENT	position 2,
+    D.MGRNO	position 3,
+    D.REPORTS	position 4,
+    D.DEPT_LEVEL	position 5,
+    D.HEAD_DEPT	position 6,
+    BUDGET long scale -2 computed by (total e.salary of e in employees with e.deptno = d.deptno)	position 7
+	query_name DBUDGET
+	query_header "Dept" / "Budget"
+	edit_string "$$$,$$$,$$$.99";
+
+define view EMPSAL of e in employees 
+cross j in jobs over job
+        E.EMPNO	position 0,
+    E.NAME	position 1,
+    E.LEVEL	position 2,
+    J.JOB_TITLE	position 3,
+    YEARLY long scale -2 computed by (e.salary)	position 4
+	edit_string "$,$$$,$$$.99",
+    PAY_PERIOD double computed by (e.salary/24)	position 5
+	edit_string "$$$,$$$.99",
+    WEEKLY double computed by (e.salary/52)	position 6
+	edit_string "$$,$$$.99",
+    HOURLY double computed by (e.salary/2080)	position 7
+	edit_string "$$,$$$.99";
+
+define view FULLEMP of d in departments cross e in employees
+over deptno cross j in jobs over job
+        E.EMPNO	position 0,
+    E.NAME	position 1,
+    J.JOB_TITLE	position 2,
+    D.DEPARTMENT	position 3,
+    MONTHS_OF_SERVICE double computed by (('today' - e.hire_date) / 30)	position 4
+	edit_string "z9";
+
+define view HEAD_DEPT of d in dept_budget with d.deptno eq '000',100,110,120,200,300,400
+        D.DEPTNO	position 1,
+    D.DEPARTMENT	position 2,
+    D.MGRNO	position 3,
+    D.DEPT_LEVEL	position 5,
+    D.HEAD_DEPT	position 6,
+    SUB_TOTAL_REPORTS long computed by (total s.reports of s in dept_budget with d.deptno = s.head_dept)	position 4,
+    SUB_BUDGET long scale -2 computed by (total s.budget of s in dept_budget with s.head_dept = d.deptno)	position 7
+	query_name TBUDGET
+	query_header "Budget" / "Inc Subs"
+	edit_string "$$$,$$$,$$$.99";
+
+define view MANAGEMENT of e in employees with e.level le 4
+                E.EMPNO	position 0,
+    E.LAST_NAME	position 1,
+    E.FIRST_NAME	position 2,
+    E.SALARY	position 3,
+    E.JOB	position 4,
+    E.DEPTNO	position 5,
+    E.LEVEL	position 6;
+
+define view SALES_FORCE of e in employees with e.job = 'Sales'   
+                E.EMPNO	position 0,
+    E.LAST_NAME	position 1,
+    E.FIRST_NAME	position 2,
+    E.SALARY	position 3,
+    E.SUPER	position 4;
+
+
+/*	Index Definitions	*/
+
+
+define index CUST for CUSTOMERS unique
+	CUSTNO;
+
+define index DEPT for DEPARTMENTS unique
+	DEPTNO;
+
+define index EMP_DEPT for EMPLOYEES 
+	DEPTNO;
+
+define index EMP_JOB for EMPLOYEES 
+	JOB;
+
+define index EMPNO_X1 for EMPLOYEES unique
+	EMPNO;
+
+define index EP_EMPNO for EMPLOYEES_PROJECTS unique
+	EMPNO,
+	PROJ_NO;
+
+define index JOB_X1 for JOBS unique
+	JOB;
+
+define index PROJ_NO for PROJECTS unique
+	PROJ_NO;
+
+define index PYXIS$INDEX for PYXIS$FORMS unique
+inactive
+	PYXIS$FORM_NAME;
+
+define index QLI$PROCEDURES_IDX1 for QLI$PROCEDURES unique
+	QLI$PROCEDURE_NAME;
+
+define index SH_EMPNO for SALARY_HISTORY unique
+	EMPNO;
+
+define index PO for SALES unique
+	PONUMB;
+
+define index SP_EMPNO for SALES_PERF unique
+	EMPNO;
+
+
+/*	Generator Definitions	*/
+
+
+define generator CUSTOMERS;
+define generator DEPARTMENTS;
+define generator EMPLOYEES;
+define generator EMPLOYEES_PROJECTS;
+define generator JOBS;
+define generator MAX_EMP;
+define generator POSTAL_STATES;
+define generator PROJECTS;
+define generator PYXIS$FORMS;
+define generator QLI$PROCEDURES;
+define generator RATING;
+define generator REVIEW;
+define generator SALARY_HISTORY;
+define generator SALES;
+define generator SALES_PEOPLE;
+define generator SALES_PERF;
+
+/*	Trigger Definitions	*/
+
+
+
+define trigger ADD_CUSTOMER for SALES
+	pre store 1:
+begin
+	if not any c in customers with c.custno = new.custno
+	store c in customers using 
+	begin
+		c.custno = new.custno;
+		c.customer = 'Added by trigger';
+	end;
+	end_store;
+	end;
+
+	end_trigger;
+
+define trigger CASCADE_CHANGE for DEPARTMENTS
+	post modify 0:
+begin
+	if old.deptno ne new.deptno
+	        begin
+		for e in employees with e.deptno = old.deptno 
+			modify e using 
+			begin
+			e.deptno = new.deptno
+			end;
+			end_modify;
+		end_for;
+	        end;
+	end;
+	
+	
+	
+	end_trigger;
+
+define trigger CASCADE_JOB for JOBS
+	post modify 0:
+begin
+	if old.job ne new.job
+	        begin
+		for e in employees with e.job = old.job
+			modify e using 
+			begin
+			e.job = new.job
+			end;
+			end_modify;
+		end_for;
+	        end;
+	end;
+	
+	
+	
+	
+	end_trigger;
+
+define trigger CHECK_REVIEW for REVIEW
+	pre store 0:
+begin
+  if not any e in employees with new.reviewer = e.super
+		abort 11;
+  if not any e in employees with new.empno = e.empno
+		abort 12;
+  if not any r in rating with new.rating = r.rating
+		abort 13;
+end;
+
+	end_trigger 
+	message  11:  "You are not the employee's manager.",
+	message  12:  "There is no employee with this number.",
+	message  13:  "You have assigned an invalid rating.";
+
+define trigger CHECK_SALES for SALES
+	pre store 1:
+begin
+	  if not any e in employees 
+		with e.empno = new.sales_rep 
+		abort 1;
+end;
+
+	
+	end_trigger 
+	message  1:  'You have entered an invalid sales rep number.';
+
+define trigger DEADBEAT for SALES
+	pre store 0:
+begin
+	  if any c in customers 
+		with c.custno = new.custno
+	        and c.on_hold = '*'
+		abort 1;
+end;
+
+	end_trigger 
+	message  1:  'This customer is a DEADBEAT! Cash only sales!!';
+
+define trigger DELETE_DEPARTMENT for DEPARTMENTS
+	pre erase 0:
+begin     	  
+	for e in employees with e.deptno = old.deptno 
+		abort 1;
+	end_for;
+	end;
+	
+	
+	
+	end_trigger 
+	message  1:  'You cannot delete a department containing employees.';
+
+define trigger ERASE_EMPLOYEES for EMPLOYEES
+	post erase 0:
+begin
+	 for e in employees with e.super = old.empno
+	  	modify e using e.super = null
+	  	end_modify;
+ 	 end_for;
+         end;
+  	 
+	
+	
+	end_trigger;
+
+define trigger ERASE_REVIEW for EMPLOYEES
+	post erase 0:
+begin
+for r in review with r.empno = old.empno
+	erase r;
+end_for;
+end;
+	
+
+	end_trigger;
+
+define trigger ERASE_SAL_HIS for SALARY_HISTORY
+	pre erase 0:
+begin
+	  if rdb$user_name ne 'STEVE'
+ 		abort 1;
+	  end;
+	
+	
+	
+	
+	end_trigger 
+	message  1:  'You should NOT be messing with this file';
+
+define trigger MODIFY_DEPARTMENT for DEPARTMENTS
+	pre modify 0:
+begin
+	  if new.department missing
+ 		abort 1;
+	  if new.mgrno not missing
+	  if not any e in employees
+		with e.empno = new.mgrno
+		abort 2;
+	  if new.head_dept not missing
+	  if not any d in departments
+		with d.head_dept = new.head_dept
+		abort 3;
+  	end;
+	
+	
+	
+	end_trigger 
+	message  1:  'Department name is missing.',
+	message  2:  'The mgrno does not exist in the employees table.',
+	message  3:  'The head department does not exist in the department table.';
+
+define trigger MODIFY_EMPLOYEES for EMPLOYEES
+	pre modify 0:
+begin
+	   if new.deptno missing or
+ 		not any d in departments 
+		with d.deptno = new.deptno 
+		abort 1;
+	  if new.job missing or
+ 		not any j in jobs
+		with j.job = new.job 
+		abort 2; 
+	  if new.super ne old.super 
+		and new.super not missing 
+ 		and not any e in employees
+		with e.empno = new.super
+		abort 3; 
+	  if new.job ne old.job 
+		and new.job = 'Sales' 
+		and not any s in sales_perf
+		with new.empno = s.empno	
+		store x in sales_perf
+			x.empno = new.empno;
+			x.first_name = new.first_name;
+			x.last_name = new.last_name;
+			x.salary = new.salary;
+		end_store;   
+	  for d in jobs with new.job = d.job and new.salary lt d.low_salary_range
+		abort 4;                       
+          end_for;        
+	  for d in jobs with new.job = d.job and new.salary gt d.high_salary_range
+		abort 5;                       
+          end_for;        
+	  for d in jobs with new.job = d.job and new.level ne d.level
+		abort 6;
+          end_for;        
+	  for s in sales_perf with new.empno = s.empno and new.salary ne s.salary
+		modify s using s.salary = new.salary;                       
+          	end_modify;
+	  end_for;        
+	  for s in sales_perf with new.job ne 'Sales' and
+		old.job = 'Sales' and old.empno = s.empno
+		modify s using s.empno = null;
+		end_modify;
+          end_for;
+	  for s in sales with new.job ne 'Sales' and
+		old.job = 'Sales' and old.empno = s.sales_rep
+		modify s using s.sales_rep = null;
+		end_modify;
+          end_for;
+
+
+         end; 
+  	 
+	
+	
+	
+	end_trigger 
+	message  1:  'Deptno is missing or invalid.',
+	message  2:  'Job is missing or invalid.',
+	message  3:  'Supervisor does not exist in the employees table.',
+	message  4:  'Salary is lower than the low range for this job.',
+	message  5:  'Salary is higher than the high range for this job.',
+	message  6:  'The level does not match that in the department table.';
+
+define trigger MOD_DEPT_COUNTS for EMPLOYEES
+	post store 0:
+begin
+	  for d in departments with new.deptno = d.deptno
+		modify d using 
+		d.reports = d.reports + 1;
+	  	end_modify;
+	  end_for;
+end;
+
+	
+	
+	
+	end_trigger;
+
+define trigger NOMOD_SAL_HIS for SALARY_HISTORY
+	pre modify 0:
+begin
+	  if rdb$user_name ne 'STEVE'
+ 		abort 1;
+	  end;
+	
+	
+	
+	
+	
+	end_trigger 
+	message  1:  'You should NOT be messing with this file';
+
+define trigger PUT_ON_HOLD for SALES
+	post modify 0:
+begin
+	  for c in customers with new.custno = c.custno and 
+		new.aged > 30 and new.paid ne '*'
+		modify c using 
+			c.on_hold = '*'
+		end_modify;
+	  end_for;
+end;
+
+	
+	end_trigger;
+
+define trigger RAISE_SALARY for SALES_PERF
+	post modify 1:
+begin
+	if new.total_sales gt old.total_sales and 
+	old.total_sales/(old.salary*4.5) lt 1.25 and
+	new.total_sales/(old.salary*4.5) ge 1.25 then
+	begin
+		for e in employees with e.empno = new.empno
+			modify e using e.salary = e.salary * 1.05
+			end_modify;
+		end_for;
+	end;
+end;
+
+	end_trigger;
+
+define trigger SAL_HISTORY for EMPLOYEES
+	pre modify 0:
+begin
+        if old.salary ne new.salary 
+		begin
+		store sh in salary_history 
+			sh.empno = old.empno;
+			sh.change_date = 'today';
+			sh.updater_id = rdb$user_name;
+			sh.old_salary = old.salary;
+			sh.new_salary = new.salary;
+		end_store;
+		end;
+	end;
+	
+	
+	
+	end_trigger;
+
+define trigger STORE_CUSTOMER for CUSTOMERS
+	pre store 0:
+begin
+	  if not any s in postal_states
+		with s.state = new.state
+		abort 1;
+end;
+	
+	
+	
+	end_trigger 
+	message  1:  'You have entered an invalid state.';
+
+define trigger STORE_DEPARTMENT for DEPARTMENTS
+	pre store 0:
+begin
+	  if new.department missing
+ 		abort 1;
+	  if new.mgrno not missing
+	  if not any e in employees
+		with e.empno = new.mgrno
+		abort 2;
+	  if new.head_dept not missing
+	  if not any d in departments
+		with d.head_dept = new.head_dept
+		abort 3;
+	end;
+	
+	
+	
+	end_trigger 
+	message  1:  'Department name is missing.',
+	message  2:  'The mgrno does not exist in the employees table.',
+	message  3:  'The head department does not exist in the department table.';
+
+define trigger STORE_EMPLOYEES for EMPLOYEES
+	pre store 0:
+begin
+	   if new.deptno missing or
+ 		not any d in departments 
+		with d.deptno = new.deptno 
+		abort 1;
+	  if new.job missing or
+ 		not any j in jobs
+		with j.job = new.job 
+		abort 2; 
+	  if new.super not missing 
+ 		and not any e in employees
+		with e.empno = new.super
+		abort 3; 
+	  if new.job = 'Sales' 
+		and not any s in sales_perf
+		with new.empno = s.empno	
+		store x in sales_perf
+			x.empno = new.empno;
+			x.first_name = new.first_name;
+			x.last_name = new.last_name;
+			x.salary = new.salary;
+		end_store;   
+	  for d in jobs with new.job = d.job and new.salary lt d.low_salary_range
+		abort 4;                       
+          end_for;        
+	  for d in jobs with new.job = d.job and new.salary gt d.high_salary_range
+		abort 5;                       
+          end_for;        
+	  for d in jobs with new.job = d.job and new.level ne d.level
+		abort 6;
+          end_for;        
+	  for s in sales_perf with new.empno = s.empno and new.salary ne s.salary
+		modify s using s.salary = new.salary;                       
+          	end_modify;
+	  end_for;        
+	  
+
+         end; 
+  	 
+	
+	
+	
+	end_trigger 
+	message  1:  'Deptno is missing or invalid.',
+	message  2:  'Job is missing or invalid.',
+	message  3:  'Supervisor does not exist in the employees table.',
+	message  4:  'Salary is lower than the low range for this job.',
+	message  5:  'Salary is higher than the high range for this job.',
+	message  6:  'The level does not match that in the department table.';
+
+define trigger SUB_DEPT_COUNTS for EMPLOYEES
+	post erase 0:
+begin
+	  for d in departments with old.deptno = d.deptno
+		modify d using 
+		d.reports = d.reports - 1;
+	  	end_modify;
+	  end_for;
+end;
+
+	
+	
+	
+	end_trigger;

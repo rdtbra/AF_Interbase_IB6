@@ -1,0 +1,116 @@
+---  The contents of this file are subject to the Interbase Public
+---  License Version 1.0 (the "License"); you may not use this file
+---  except in compliance with the License. You may obtain a copy
+---  of the License at http://www.Inprise.com/IPL.html
+---
+---  Software distributed under the License is distributed on an
+---  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+---  or implied. See the License for the specific language governing
+---  rights and limitations under the License.
+---
+---  The Original Code was created by Inprise Corporation
+---  and its predecessors. Portions created by Inprise Corporation are
+---  Copyright (C) Inprise Corporation.
+---
+---  All Rights Reserved.
+---  Contributor(s): ______________________________________.
+---
+-- **************************************************************************
+-- *
+-- *	A simple minded example of Dynamic SQL.
+-- *	The query to be executed is simply from a string constant, in a
+-- *	real application the query string would be developed through
+-- *	interaction of some sort with the user.
+-- *
+-- **************************************************************************
+
+WITH basic_io, interbase;
+use interbase;
+
+PROCEDURE dsql IS
+
+EXEC SQL
+	INCLUDE SQLCA
+
+-- *  Set up the query statement
+query: CONSTANT string(1..61) := "SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = 'NY'";
+
+-- *  Declare variables to receive data. Note: if it is not known before hand
+-- *  the nature of the fields to be retrieved, it would be necessary to allocate
+-- *  buffer space for the fields at run time, rather than using predeclared
+-- *  fields.
+
+TYPE sqlda IS RECORD
+	sqldaid		: interbase.chars (1..8);
+	sqldabc		: integer;
+	sqln		: interbase.isc_short := 3;
+	sqld		: interbase.isc_short;
+	sqlvars		: interbase.sqlvar_array (1..3);
+END RECORD;
+FOR sqlda use record at mod 4;
+	sqldaid		at 0 range 0..63;
+	sqldabc		at 8 range 0..31;
+	sqln		at 12 range 0..15;
+	sqld		at 14 range 0..15;
+	sqlvars		at 16 range 0..1055;
+END RECORD;
+
+sqlda1: sqlda;
+
+city: BASED_ON CITIES.CITY;
+state: BASED_ON CITIES.STATE;
+population: BASED_ON CITIES.POPULATION;
+flag1, flag2, flag3: interbase.isc_short;
+
+begin
+
+EXEC SQL
+	WHENEVER SQLERROR GO TO Error_processing;
+
+-- *  Prepare the query
+    EXEC SQL
+        PREPARE Q INTO sqlda1 FROM :query;
+
+-- *  Set up SQLDA to point to declared fields, adjusting datatypes and
+-- *    setting null terminators on the way through.  Change type for city & 
+-- *    state fields to be TEXT rather than VARYING since C does not know 
+-- *    about VARYING fields.  The format <datatype> + 1 indicates that the
+-- *    field is of <datatype> and has an indicator variable
+    sqlda1.sqlvars(1).sqldata := city'address;
+    sqlda1.sqlvars(1).sqlind := flag1'address;
+    sqlda1.sqlvars(1).sqltype := interbase.SQL_TEXT + 1;
+    sqlda1.sqlvars(2).sqldata := state'address;
+    sqlda1.sqlvars(2).sqlind := flag2'address;
+    sqlda1.sqlvars(2).sqltype := interbase.SQL_TEXT + 1;
+    sqlda1.sqlvars(3).sqldata := population'address;
+    sqlda1.sqlvars(3).sqlind := flag3'address;
+
+    EXEC SQL
+        DECLARE C CURSOR FOR Q;
+
+    EXEC SQL
+        OPEN C;
+
+-- *  Fetch and print out records
+    EXEC SQL
+        FETCH C USING DESCRIPTOR sqlda1;
+    WHILE SQLCODE = 0 LOOP
+	basic_io.put (city);
+	basic_io.put (state);
+	basic_io.put (population);
+	basic_io.new_line;
+       	EXEC SQL
+        	FETCH C USING DESCRIPTOR sqlda1;
+	END LOOP;
+
+    EXEC SQL
+	COMMIT RELEASE;
+
+<<Error_processing>>
+    IF SQLCODE /= 0 THEN
+	basic_io.put ("Data base error, SQLCODE = ");
+	basic_io.put (SQLCODE);
+	basic_io.new_line;
+    END IF;
+
+END dsql;

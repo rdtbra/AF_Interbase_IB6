@@ -1,0 +1,151 @@
+---  The contents of this file are subject to the Interbase Public
+---  License Version 1.0 (the "License"); you may not use this file
+---  except in compliance with the License. You may obtain a copy
+---  of the License at http://www.Inprise.com/IPL.html
+---
+---  Software distributed under the License is distributed on an
+---  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+---  or implied. See the License for the specific language governing
+---  rights and limitations under the License.
+---
+---  The Original Code was created by Inprise Corporation
+---  and its predecessors. Portions created by Inprise Corporation are
+---  Copyright (C) Inprise Corporation.
+---
+---  All Rights Reserved.
+---  Contributor(s): ______________________________________.
+
+WITH basic_io, interbase;
+
+PROCEDURE sql IS
+
+---
+--- CENSUS REPORT
+---
+--- Include the SQL Communications Area
+EXEC SQL
+	INCLUDE SQLCA
+
+---
+--- Set up to catch SQL errors. Note: this will require that each
+--- routine which contains executeable SQL commands to have an
+--- error handling section labeled '999'. 
+---
+EXEC SQL
+	WHENEVER SQLERROR GO TO Error_processing;
+
+PROCEDURE print_error IS
+---
+--- Print out error message 
+---
+BEGIN --- print_error
+	basic_io.put ("Data base error, SQLCODE = ");
+	basic_io.put (SQLCODE);
+	basic_io.new_line;
+	interbase.print_status (gds_status);
+END print_error;
+
+FUNCTION setup RETURN INTEGER IS
+---
+--- Put in estimated data for missing 1960 & 1970 census data.
+---   Return 1 if successful, 0 otherwise.
+---
+BEGIN --- setup
+
+---	Replace missing 1960 census data with estimates 
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1960 = (0.3 * (CENSUS_1980 - CENSUS_1950)) + CENSUS_1950
+		WHERE CENSUS_1960 IS NULL;
+
+---	Replace missing 1970 census data with estimates 
+	EXEC SQL
+		UPDATE POPULATIONS
+		SET CENSUS_1970 = (0.65 * (CENSUS_1980 - CENSUS_1950)) + CENSUS_1950
+		WHERE CENSUS_1970 IS NULL;
+
+	RETURN 1;
+
+<<Error_processing>>
+	IF SQLCODE /= 0 THEN
+		print_error;
+		RETURN 0;
+	END IF;
+END setup;
+
+PROCEDURE census_report IS
+
+--- Declare variables to receive data retrieved by SQL commands
+pop_50, pop_60, pop_70, pop_80: BASED_ON POPULATIONS.CENSUS_1950;
+stname: BASED_ON STATES.STATE_NAME;
+
+BEGIN --- census report
+
+---	Declare cursor for use in retrieving state/census data
+        EXEC SQL
+		DECLARE C CURSOR FOR
+		SELECT STATE_NAME, CENSUS_1950, CENSUS_1960,
+			CENSUS_1970, CENSUS_1980
+		FROM STATES S, POPULATIONS P
+		WHERE S.STATE = P.STATE
+		ORDER S.STATE_NAME;
+
+---	Open cursor for use in retrieving state/census data
+	EXEC SQL
+		OPEN C;
+
+---	Print report header 
+	basic_io.put ("  STATE                  POPULATION");
+	basic_io.new_line;
+	basic_io.put ("                              ");
+	basic_io.put ("1950       1960       1970       1980");
+	basic_io.new_line;
+
+
+---	Retrieve first set of state/census data 
+	EXEC SQL
+		FETCH C INTO :stname, :pop_50, :pop_60, :pop_70, :pop_80;
+
+---	Until end of data stream is reached, print out current set
+---	of data and then fetch next set 
+	WHILE SQLCODE = 0 LOOP
+		basic_io.put (stname);
+		basic_io.put (pop_50);
+		basic_io.put (pop_60);
+		basic_io.put (pop_70);
+		basic_io.put (pop_80);
+		basic_io.new_line;
+
+---		Retrieve next set of state/census data
+		EXEC SQL
+			FETCH C INTO :stname, :pop_50, :pop_60,
+				 :pop_70, :pop_80;
+		END LOOP;
+
+---	Close cursor
+	EXEC SQL
+		CLOSE C;
+
+<<Error_processing>>
+	IF SQLCODE /= 0 THEN
+		print_error;
+	END IF;
+END census_report;
+
+BEGIN --- sql
+
+---	Set up estimated data; if successful then do report 
+	IF setup = 1 THEN
+		census_report;
+	END IF;
+
+---	Undo estimated census data 
+	EXEC SQL
+		ROLLBACK;
+
+---	Output error information 
+<<Error_processing>>
+	IF SQLCODE /= 0 THEN
+		print_error;
+	END IF;
+END sql;

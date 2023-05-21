@@ -1,0 +1,142 @@
+C  The contents of this file are subject to the Interbase Public
+C  License Version 1.0 (the "License"); you may not use this file
+C  except in compliance with the License. You may obtain a copy
+C  of the License at http://www.Inprise.com/IPL.html
+C
+C  Software distributed under the License is distributed on an
+C  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+C  or implied. See the License for the specific language governing
+C  rights and limitations under the License.
+C
+C  The Original Code was created by Inprise Corporation
+C  and its predecessors. Portions created by Inprise Corporation are
+C  Copyright (C) Inprise Corporation.
+C
+C  All Rights Reserved.
+C  Contributor(s): ______________________________________.
+
+C      CENSUS REPORT
+
+
+       INTEGER SETUP
+C      Include the SQL Communications Area
+       EXEC SQL
+     *      INCLUDE SQLCA
+
+C      Set up to catch SQL errors. Note: this will require that each
+C      routine which contains executeable SQL commands to have an
+C      error handling section labeled '999'. */
+       EXEC SQL
+     *      WHENEVER SQLERROR GO TO 999
+
+C      Set up estimated data; if successful then do report
+       IF (SETUP(0) .EQ. 1) CALL CENSUS_REPORT()
+
+C      Undo estimated census data
+
+       EXEC SQL
+     *      ROLLBACK
+
+       STOP
+
+C      Output error information
+999    CALL PRINT_ERROR()
+       STOP
+       END
+
+       SUBROUTINE PRINT_ERROR()
+C      Include the SQL Communications Area
+       EXEC SQL
+     *      INCLUDE SQLCA
+
+C      Print out error message
+       WRITE (*,*) 'Data base error, SQLCODE = ', SQLCODE
+       RETURN
+       END
+
+       INTEGER FUNCTION SETUP(DUMMY)
+C      Put in estimated data for missing 1960 & 1970 census data.
+C      Return 1 if successful, 0 otherwise.
+
+C      Include the SQL Communications Area
+       EXEC SQL
+     *      INCLUDE SQLCA
+
+C       Replace missing 1960 census data with estimates */
+
+       EXEC SQL
+     *      UPDATE POPULATIONS
+     *      SET CENSUS_1960 = (0.3 * (CENSUS_1980 - CENSUS_1950))
+     *                         + CENSUS_1950
+     *      WHERE CENSUS_1960 IS NULL
+
+C      Replace missing 1970 census data with estimates
+
+       EXEC SQL
+     *      UPDATE POPULATIONS
+     *      SET CENSUS_1970 = (0.65 * (CENSUS_1980 - CENSUS_1950))
+     *                        + CENSUS_1950
+     *      WHERE CENSUS_1970 IS NULL
+
+       SETUP = 1
+       RETURN
+
+C      Error return
+999    CALL PRINT_ERROR()
+       SETUP = 0
+       RETURN
+       END
+
+       SUBROUTINE CENSUS_REPORT()
+C      Declare variables to receive data retrieved by SQL commands
+       INTEGER POP_50, POP_60, POP_70, POP_80
+       CHARACTER*25 STNAME
+
+C      Include the SQL Communications Area
+       EXEC SQL
+     *      INCLUDE SQLCA
+
+C      Declare cursor for use in retrieving state/census data
+       EXEC SQL
+     *      DECLARE C CURSOR FOR
+     *      SELECT STATE_NAME, CENSUS_1950, CENSUS_1960,
+     *          CENSUS_1970, CENSUS_1980
+     *      FROM STATES S, POPULATIONS P
+     *      WHERE S.STATE = P.STATE
+     *      ORDER S.STATE_NAME
+
+C      Open cursor for use in retrieving state/census data
+       EXEC SQL
+     *      OPEN C
+
+C      Print report header
+       WRITE (*,1001) 'STATE', 'POPULATION'
+1001   FORMAT (T5,A,T42,A)
+       WRITE (*,1002) '1950', '1960', '1970', '1980'
+1002   FORMAT (T29,A,T41,A,T53,A,T65,A)
+
+C      Retrieve first set of state/census data
+       EXEC SQL
+     *      FETCH C INTO :STNAME, :POP_50, :POP_60, :POP_70, :POP_80
+
+C      Until end of data stream is reached, print out current set
+C      of data and then fetch next set
+       DO WHILE (SQLCODE .EQ. 0)
+           WRITE (*,1000) STNAME, POP_50, POP_60, POP_70, POP_80
+1000       FORMAT (A25,T26,I9,T38,I9,T50,I9,T62,I9)
+C          Retrieve next set of state/census data
+           EXEC SQL
+     *          FETCH C INTO :STNAME, :POP_50, :POP_60,
+     *             :POP_70, :POP_80
+       END DO
+
+C      Close cursor
+       EXEC SQL
+     *      CLOSE C
+
+       RETURN
+
+C      Error return
+999    CALL PRINT_ERROR()
+       RETURN
+       END

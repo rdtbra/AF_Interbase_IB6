@@ -1,0 +1,119 @@
+--  The contents of this file are subject to the Interbase Public
+--  License Version 1.0 (the "License"); you may not use this file
+--  except in compliance with the License. You may obtain a copy
+--  of the License at http://www.Inprise.com/IPL.html
+--
+--  Software distributed under the License is distributed on an
+--  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+--  or implied. See the License for the specific language governing
+--  rights and limitations under the License.
+--
+--  The Original Code was created by Inprise Corporation
+--  and its predecessors. Portions created by Inprise Corporation are
+--  Copyright (C) Inprise Corporation.
+--
+--  All Rights Reserved.
+--  Contributor(s): ______________________________________.
+
+with IO_Exceptions;
+
+PACKAGE Basic_IO IS
+    PROCEDURE Get (Item: OUT Integer);
+    PROCEDURE Get (Item: OUT Short_Integer);
+    PROCEDURE Get (Item: OUT Character);
+    PROCEDURE Get (Item: OUT String);
+
+    PROCEDURE Put (Item: IN Integer);
+    PROCEDURE Put (Item: IN Short_Integer);
+    PROCEDURE Put (Item: IN Character);
+    PROCEDURE Put (Item: IN String);
+
+    PROCEDURE Get_Line
+	(Item: OUT String; Last : OUT Natural);
+    
+    PROCEDURE New_Line;
+
+    PROCEDURE New_Page;
+
+    PROCEDURE Skip_Line;
+
+    FUNCTION End_of_File RETURN Boolean;
+
+    Device_error	: EXCEPTION RENAMES IO_exceptions.Device_error;
+    End_error		: EXCEPTION RENAMES IO_exceptions.End_error;
+    Data_error		: EXCEPTION RENAMES IO_exceptions.Data_error;
+END Basic_IO;
+
+WITH Text_IO;
+PACKAGE BODY Basic_IO IS
+    PACKAGE Type_Integer_IO IS
+	NEW Text_IO.Integer_IO (Integer);
+
+    PROCEDURE Get (Item: OUT Integer) IS
+    BEGIN
+	Type_Integer_IO.GET (ITEM);
+    END Get;
+
+    PROCEDURE Get (Item: OUT Short_Integer) IS
+	big : integer;
+    BEGIN
+	Type_Integer_IO.GET (big);
+	Item := short_integer (big);
+    END Get;
+
+    PROCEDURE Get (Item: OUT Character) IS
+    BEGIN
+	Text_IO.GET (ITEM);
+    END Get;
+
+    PROCEDURE Get (Item: OUT String) IS
+    BEGIN
+	Text_IO.GET (ITEM);
+    END Get;
+
+    PROCEDURE Put (Item: IN Integer) IS
+    BEGIN
+	Type_Integer_IO.PUT (ITEM);
+    END Put;
+
+    PROCEDURE Put (Item: IN Short_Integer) IS
+    BEGIN
+	Type_Integer_IO.PUT (integer(item));
+    END Put;
+
+    PROCEDURE Put (Item: IN Character) IS
+    BEGIN
+	Text_IO.PUT (ITEM);
+    END Put;
+
+    PROCEDURE Put (Item: IN String) IS
+    BEGIN
+	Text_IO.PUT (ITEM);
+    END Put;
+
+    PROCEDURE Get_Line
+	(Item : OUT String; Last : OUT Natural) IS
+    BEGIN
+	Text_IO.Get_line (Item, Last);
+    END Get_line;
+
+    PROCEDURE New_line IS
+    BEGIN
+	Text_IO.New_line;
+    END New_line;
+
+    PROCEDURE New_page IS
+    BEGIN
+	Text_IO.New_Page;
+    END New_Page;
+
+    PROCEDURE Skip_line IS
+    BEGIN
+	Text_IO.Skip_line;
+    END Skip_line;
+
+    FUNCTION End_of_File RETURN Boolean IS
+    BEGIN
+	RETURN Text_IO.End_of_File;
+    END End_of_file;
+END Basic_IO;

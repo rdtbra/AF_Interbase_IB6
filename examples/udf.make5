@@ -1,0 +1,103 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.udf	Build C-language example of creating, defining, and calling UDF
+# 		designed for AIX
+#
+#  To build the user-defined function example:
+#	make -f make.udf new
+#       make -f make.udf
+#
+#
+#  To run the user-defined function example:
+#  	1. Run udftest
+#	2. Run qli
+#	   a. ready atlas.gdb
+#	   b. list rdb$functions 
+# 	   c. use print statements to run them
+#	   d. test the upper function called from a trigger
+#             by storing a state with lower case abbreviation.
+#
+
+.SUFFIXES: .o .c .e .gdb .gdl
+.gdl.gdb:
+	$(GDEF)	$<
+.e.c:
+	$(GPRE) -e -n $<
+.c.o:
+	cc $(CFLAGS) -c $<
+
+
+# definitions
+#
+CFLAGS=		-g
+IBEXE=		$(INTERBASE)/bin
+INTERBASE=	 /usr/interbase
+LIBRARY=	-lgdsshr
+#
+GBAK=		$(IBEXE)/gbak -z
+GDEF=		$(IBEXE)/gdef -z
+GPRE=		$(IBEXE)/gpre -z
+
+
+udftest :	udftest.o 
+		cc -g udftest.o $(LIBRARY) -o udftest
+		@echo "To run the udftest type: udftest "
+
+new :		
+		cp $(INTERBASE)/examples/v3/udftest.e .
+		cp $(INTERBASE)/examples/v3/udf.c .
+		cp $(INTERBASE)/examples/v3/udf.gdl .
+		cp $(INTERBASE)/examples/v3/udf_trig.gdl .
+		chmod 666 *.c *.e *.gdl 
+		$(GBAK) -r $(INTERBASE)/examples/v3/atlas.gbak atlas.gdb
+		
+functions :	functions.flag
+		rm udf.com
+
+trigger :	trigger.flag
+
+functions.flag : udf.gdl funclib.flag
+		echo "#!/bin/sh" > udf.com 
+		echo "CURDIR=`pwd`" >> udf.com 
+		echo 'sed "s%FUNCLIB%$$CURDIR%" udf.gdl > udf_use.gdl' >> udf.com
+		echo "$(GDEF)  udf_use.gdl" >> udf.com
+		chmod 777 udf.com
+		./udf.com
+		echo "gdef'd udf.gdl" > functions.flag
+
+trigger.flag :	functions.flag udf_trig.gdl
+		$(GDEF) udf_trig.gdl
+		echo "gdef'd udf_trig.gdl" > trigger.flag
+
+udf.o :		udf.c
+		cc $(CFLAGS) -c udf.c
+funclib.flag :	udf.o
+		cc udf.o -e fn_abs -o abs_udf
+		cc udf.o -e fn_max -o max_udf
+		cc udf.o -e fn_time -o time_udf
+		cc udf.o -e fn_upper_c -o upper_udf
+		cc udf.o -e fn_upper_non_c -o upper_nc_udf
+		echo "function executables built" > funclib.flag
+		
+udftest.c :	atlas.gdb trigger.flag udftest.e
+udftest.o :	udftest.c
+
+udf_trig.gdl udf.gdl udftest.e atlas.gdb : 
+		@echo "    TYPE: make -f udf.make new "
+		@echo "    to copy necessary files from $(INTERBASE)/examples"
+clean :	
+		rm -f udf* *.flag *_udf atlas.gdb

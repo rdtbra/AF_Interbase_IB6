@@ -1,0 +1,53 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+define database "nc_guide.gdb"
+	page_size 1024;
+
+/*	Global Field Definitions	*/
+ 
+
+define field AREA long;
+define field CAPITAL char [25];
+define field CITY varying [25];
+define field GUIDEBOOK blob segment_length 60;
+define field OFFICE blob segment_length 40;
+define field STATE varying [4];
+define field STATEHOOD date;
+define field STATE_NAME char [25];
+define field ZIP varying [10];
+
+/*	Relation  Definitions	*/
+
+
+
+define relation STATES
+    STATE	position 1,
+    STATE_NAME	position 2,
+    AREA	position 3,
+    STATEHOOD	position 4,
+    CAPITAL	position 5;
+
+define relation TOURISM
+    STATE	position 0,
+    STATE_NAME	position 0,
+    ZIP	position 1,
+    CITY	position 2,
+    OFFICE	position 3,
+    GUIDEBOOK	position 4;
+

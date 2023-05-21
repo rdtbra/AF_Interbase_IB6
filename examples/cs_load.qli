@@ -1,0 +1,56 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+ready cs_load.gdb as flat;
+ready cs_demo.gdb as data;
+
+for f in flat.CLIENTS
+    store d in data.CLIENTS using begin
+	d.CLIENTNO	= f.CLIENTNO	
+	d.CLIENT	= f.CLIENT	
+	d.STREET_ADDRESS= f.STREET_ADDRESS	
+	d.CITY	        = f.CITY	
+	d.POSTCODE	= f.POSTCODE	
+	d.COUNTRY	= f.COUNTRY	
+    end;
+
+for f in flat.CONTACTS
+    store d in data.CONTACTS using begin
+	d.CONTACTNO	= f.CONTACTNO	
+	d.CLIENTNO	= f.CLIENTNO	
+	d.FIRSTNAME	= f.FIRSTNAME
+	d.LASTNAME	= f.LASTNAME
+    end;
+
+for f in flat.PRODUCTS
+    store d in data.PRODUCTS using begin
+	d.PRODUCTNO	= f.PRODUCTNO
+	d.PRODUCTNAME	= f.PRODUCTNAME
+	d.DESCRIPTION	= f.DESCRIPTION
+	d.PC_PRODUCTNAME= f.PC_PRODUCTNAME
+	d.PC_DESCRIPTION= f.PC_DESCRIPTION
+    end;
+
+for f in flat.USERS
+    store d in data.USERS using begin
+	d.USERID	= f.USERID;
+	d.NAME		= f.NAME;
+    end;
+
+commit
+quit

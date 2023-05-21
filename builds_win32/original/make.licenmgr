@@ -1,0 +1,77 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+#-------------------------------- LICENMGR MAKEFILE ---------------------------------
+#       This makefile builds the licenmgr objects needed for the license manager
+#
+#        1         2         3         4         5         6         7         8
+#2345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+!include ..\include.mak
+
+VERSION_RES=	version_95.res
+
+MS_LINK=	comdlg32.lib kernel32.lib winspool.lib ole32.lib oleaut32.lib uuid.lib
+
+LMGR_FILES=     licenmgr.c
+
+WISQL_FILES=	 ..\wisql\comfunc.c
+
+LMGR_OBJS=      $(LMGR_FILES:.c=.obj)
+
+JRD_MISC=       $(ROOT)\jrd\$(.path.obj)\node.obj
+
+WISQL_MISC=	comfunc.obj
+
+LICEN_FLAGS = 	/link -nodefaultlib:libc -machine:i386
+
+RESOURCE_LINK=	$(ROOT)\licenmgr\$(.path.obj)\licenmgr.res
+
+WIN_LIBS=	gdi32.lib user32.lib comctl32.lib msvcrt.lib ctl3d32.lib advapi32.lib
+
+LICENMGR_IMPORTS=  $(VERSION_LINK) $(RESOURCE_LINK) $(SHRLIB_LINK) $(ADVAPI_LINK)
+
+#-----------------------------------------------------------------------------
+
+licenmgr.exe: $(.path.obj)\licenmgr.rsp $(.path.obj)\licenmgr.res
+	$(ECHO) $(VERSION_CFLAGS) >tmp.rsp
+	$(ECHO) $(VENDOR_CFLAGS) -D_X86_=1 -DWIN32 -DI386 >> tmp.rsp
+	$(ECHO) $(O_EXE_SWITCH)$(.path.obj)\licenmgr.exe >> tmp.rsp
+	$(ECHO) $(LICEN_FLAGS) >> tmp.rsp
+	$(ECHO) $(RESOURCE_LINK) >> tmp.rsp
+	$(ECHO) $(SHRLIB_LINK) >> tmp.rsp
+	$(ECHO) $(WIN_LIBS) >> tmp.rsp
+	$(ECHO) $(MS_LINK) >> tmp.rsp
+	$(CC)  @tmp.rsp @$(.path.obj)\licenmgr.rsp
+
+$(.path.obj)\licenmgr.res: licenmgr.rc
+
+
+$(.path.obj)\licenmgr.rsp: $(LMGR_OBJS) $(JRD_MISC) $(WISQL_MISC)
+	$(RM) $<
+	&$(ECHO) $** >> $<
+
+licenmgr.obj:	licenmgr.c
+	$(CC) @&&! 
+	$(CFLAGS) -c licenmgr.c
+!
+
+comfunc.obj:	..\wisql\comfunc.c
+	$(CC) @&&! 
+	$(CFLAGS) -c ..\wisql\comfunc.c
+!
+	$(TOUCH) $(.path.obj)\licenmgr.exe
+

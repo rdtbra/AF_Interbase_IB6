@@ -1,0 +1,90 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program dsql (INPUT, OUTPUT);
+
+    EXEC SQL
+        INCLUDE SQLCA
+var
+    sqlda1	: sqlda;
+    query: packed array[1..61] of CHAR :=
+         'SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE = "NY"';
+    city: [VOLATILE] varying [25] of CHAR;
+    state: [VOLATILE] varying [5] of CHAR;
+    population: [VOLATILE] integer;
+    flag1, flag2, flag3: [VOLATILE] gds__short;
+
+label
+    999;
+
+begin
+
+    EXEC SQL
+	WHENEVER SQLERROR GO TO 999
+
+    sqlda1.sqln := 100;
+    EXEC SQL
+        PREPARE Q INTO sqlda1 FROM :query;
+
+(*  Associate each sqlda pointer with the program variable which
+    will hold the data. Since we happen to know that the character
+    fields are VARYING, their target variables are declares as VARYING,
+    and the whole thing should run beautifully, since VAX/PASCAL is
+    one language that supports the InterBase style varying text. 
+    Add one to the datatype declaration to show that there is an 
+    indicator variable associated with the field.
+*)
+
+    sqlda1.sqlvars[1].sqldata := address(city);
+    sqlda1.sqlvars[1].sqlind := address(flag1);
+    sqlda1.sqlvars[1].sqltype := SQL_VARYING + 1;
+
+    sqlda1.sqlvars[2].sqldata := address(state);
+    sqlda1.sqlvars[2].sqlind := address(flag2);
+    sqlda1.sqlvars[2].sqltype := SQL_VARYING + 1;
+
+    sqlda1.sqlvars[3].sqldata := address(population);
+    sqlda1.sqlvars[3].sqlind := address(flag3);
+
+    EXEC SQL
+        DECLARE C CURSOR FOR Q;
+
+    EXEC SQL
+        OPEN C;
+
+    EXEC SQL
+        FETCH C USING DESCRIPTOR sqlda1;
+    while (SQLCODE = 0) do
+        begin
+        writeln (city, ' ', state, ' ', population);
+        EXEC SQL
+            FETCH C USING DESCRIPTOR sqlda1;
+        end;
+
+    EXEC SQL
+	COMMIT RELEASE;
+
+999: if (SQLCODE <> 0) then
+     begin
+       writeln ('Data base error, SQLCODE = ', SQLCODE);
+       gds__print_status (gds__status);
+     end;
+
+end.

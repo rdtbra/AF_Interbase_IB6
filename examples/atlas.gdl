@@ -1,0 +1,420 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+define database "atlas.gdb"
+	{The atlas database is the sample database used 
+throughout the InterBase documentation set.  It is based on 
+a North American atlas and gazetteer.  Type "show relations" 
+at the QLI prompt for a listing of the relations in the database. 
+}
+	page_size 1024;
+
+
+/*	Global Field Definitions	*/
+
+define field ALTITUDE long;
+define field AREA long;
+define field AREA_CODE char [3];
+define field AREA_NAME varying [20];
+define field CAPITAL varying [25];
+define field CENSUS_1950 long;
+define field CENSUS_1960 long;
+define field CENSUS_1970 long;
+define field CENSUS_1980 long;
+define field CENTER_FIELD long;
+define field CITY varying [25];
+define field CODE varying [4];
+define field COMMENTS blob segment_length 60;
+define field ELECT_APPT char [1]
+	valid if (elect_appt = 'E' or elect_appt = 'A' or
+elect_appt missing);
+define field F1 blob;
+define field F2 blob;
+define field F3 blob;
+define field FIRST_NAME varying [10];
+define field FLAG char [1]
+	valid if (flag = 'Y' or flag = 'N' or flag missing);
+define field GUIDEBOOK blob segment_length 60;
+define field HOME_STADIUM varying [30];
+define field INCORPORATION date;
+define field INIT_TERM date;
+define field LAST_NAME varying [20];
+define field LATITUDE long;
+define field LATITUDE_COMPASS char [1]
+	missing_value is "x";
+define field LATITUDE_DEGREES varying [3]
+	missing_value is -1;
+define field LATITUDE_MINUTES char [2]
+	missing_value is -1;
+define field LEAGUE char [1];
+define field LEFT_FIELD long;
+define field LENGTH long;
+define field LOCATION blob segment_length 60;
+define field LONGITUDE long;
+define field MIDDLE_INITIAL char [1];
+define field NAME varying [25];
+define field NUM_TRAILS long;
+define field OFFICE blob segment_length 40;
+define field OUTFLOW varying [30];
+define field PARTY_AFFILIATION char [1];
+define field PHONE char [10]
+	edit_string "(xxx)Bxxx-xxxx";
+define field POL_TYPE char [1]
+	valid if (pol_type = 'P' or pol_type = 'S'
+or pol_type missing);
+define field POPULATION long;
+define field POSTAL_CODE char [10];
+define field PROVINCE varying [4];
+define field PYXIS$FORM blob segment_length 80
+	system_flag 2;
+define field PYXIS$FORM_NAME char [31]
+	system_flag 2;
+define field PYXIS$FORM_TYPE char [16]
+	system_flag 2;
+define field QLI$PROCEDURE blob segment_length 80;
+define field QLI$PROCEDURE_NAME char [31];
+define field RAIN_ARRAY double(1973:1975,12);
+define field RIGHT_FIELD long;
+define field RIVER varying [30];
+define field SEATING long;
+define field STATE varying [4];
+define field STATEHOOD date;
+define field STATE_NAME varying [25];
+define field SURFACE char [1];
+define field TEAM_NAME varying [15];
+define field TEMPERATURE_ARRAY double(1973:1975,12);
+define field TRAILS_LIGHTED long
+	query_name LIT;
+define field TRAILS_SET long;
+define field TYPE char [1]
+	valid if (type = 'N' or
+			 type = 'A' or
+			 type = 'B');
+define field YEAR char [4];
+define field YEAR_FOUNDED char [4];
+define field ZIP varying [10];
+
+
+/*	Relation Definitions	*/
+
+
+define relation BASEBALL_TEAMS
+    TEAM_NAME	position 0,
+    CITY	position 1,
+    STATE	position 2,
+    HOME_STADIUM	position 3,
+    LEAGUE	position 4,
+    LEFT_FIELD	position 5,
+    CENTER_FIELD	position 6,
+    RIGHT_FIELD	position 7,
+    SEATING	position 8,
+    SURFACE	position 9;
+
+define relation CITIES
+    CITY	position 0,
+    STATE	position 1,
+    POPULATION	position 2,
+    ALTITUDE	position 3,
+    LATITUDE_DEGREES	position 6
+	query_name LATD,
+    LATITUDE_MINUTES	position 7
+	query_name LATM,
+    LATITUDE_COMPASS	position 8
+	query_name LATC,
+    LONGITUDE_DEGREES based on LATITUDE_DEGREES	position 9
+	query_name LONGD,
+    LONGITUDE_MINUTES based on LATITUDE_MINUTES	position 10
+	query_name LONGM,
+    LONGITUDE_COMPASS based on LATITUDE_COMPASS	position 11
+	query_name LONGC,
+    RAIN_ARRAY,
+    TEMPERATURE_ARRAY,
+    LATITUDE varying [7] computed by (latitude_degrees | ' ' | latitude_minutes | latitude_compass)	position 4,
+    LONGITUDE varying [7] computed by (longitude_degrees | ' ' | longitude_minutes | longitude_compass)	position 5;
+
+define relation CROSS_COUNTRY
+    AREA_NAME	position 0,
+    CITY	position 1,
+    STATE	position 2,
+    PHONE	position 3
+	edit_string "(xxx)Bxxx-xxxx",
+    NUM_TRAILS	position 4,
+    TRAILS_SET	position 5,
+    TRAILS_LIGHTED	position 6,
+    INSTRUCTION based on FLAG	position 7
+	query_header "INST",
+    RENTALS based on FLAG	position 8
+	query_header "RENT",
+    REPAIRS based on FLAG	position 9
+	query_header "REP",
+    FOOD based on FLAG	position 10,
+    LODGE based on FLAG	position 11
+	query_header "BEDS",
+    PACKAGES based on FLAG	position 12
+	query_header "PKG",
+    GUIDED_TOURS based on FLAG	position 13
+	query_header "TOUR",
+    COMMENTS	position 14;
+
+define relation MAYORS
+    CITY	position 0,
+    STATE	position 1,
+    PARTY_AFFILIATION	position 3
+	query_name PARTY
+	query_header "party",
+    INIT_TERM	position 4,
+    ELECT_APPT	position 5,
+    FIRST_NAME	position 6,
+    MIDDLE_INITIAL	position 7,
+    LAST_NAME	position 8,
+    MAYOR_NAME varying [31] computed by (first_name | ' ' | last_name)	position 2;
+
+define relation POLITICAL_SUBDIVISIONS
+    CODE	position 1,
+    NAME	position 2,
+    AREA	position 3,
+    INCORPORATION	position 4,
+    CAPITAL	position 5,
+    POL_TYPE;
+
+define relation POPULATIONS
+    STATE	position 0,
+    CENSUS_1950	position 1,
+    CENSUS_1960	position 2,
+    CENSUS_1970	position 3,
+    CENSUS_1980	position 4;
+
+define relation POPULATION_CENTER
+    YEAR	position 0,
+    LATITUDE_DEGREES	position 3,
+    LATITUDE_MINUTES	position 4,
+    LATITUDE_COMPASS	position 5,
+    LONGITUDE_DEGREES based on LATITUDE_DEGREES	position 6,
+    LONGITUDE_MINUTES based on LATITUDE_MINUTES	position 7,
+    LONGITUDE_COMPASS based on LATITUDE_COMPASS	position 8,
+    LOCATION	position 9,
+    LATITUDE varying [7] computed by (latitude_degrees | ' ' | latitude_minutes | latitude_compass),
+    LONGITUDE varying [7] computed by (longitude_degrees | ' ' | longitude_minutes | longitude_compass);
+
+define relation PROVINCES
+    PROVINCE	position 0,
+    PROVINCE_NAME based on STATE_NAME	position 1,
+    AREA	position 2,
+    CAPITAL based on CITY	position 3;
+
+define relation PYXIS$FORMS
+	system_flag 2
+    PYXIS$FORM_NAME	position 1,
+    PYXIS$FORM_TYPE	position 2,
+    PYXIS$FORM	position 3;
+
+define relation QLI$PROCEDURES
+	system_flag 2
+    QLI$PROCEDURE_NAME	position 1,
+    QLI$PROCEDURE	position 2;
+
+define relation RIVERS
+    RIVER	position 0,
+    SOURCE based on PROVINCE	position 1,
+    OUTFLOW	position 2,
+    LENGTH	position 3;
+
+define relation RIVER_STATES
+    STATE	position 0,
+    RIVER	position 1;
+
+define relation SKI_AREAS
+    NAME	position 0,
+    TYPE	position 1,
+    CITY	position 2,
+    STATE	position 3;
+
+define relation STATES
+    STATE	position 0,
+    STATE_NAME	position 2,
+    AREA	position 3,
+    STATEHOOD	position 4,
+    CAPITAL based on CITY	position 5;
+
+define relation TOURISM
+    STATE	position 0,
+    ZIP	position 1,
+    CITY	position 2,
+    OFFICE	position 3,
+    GUIDEBOOK	position 4;
+
+
+/*	View Definitions	*/
+
+
+define view CITY_TON of c in cities with c.city matching '*ton*'
+    C.CITY	position 0,
+    C.STATE	position 1,
+    C.POPULATION	position 2;
+
+define view LARGE_NON_CAPITALS of s in states
+cross c in cities over state cross
+cs in cities with cs.state = c.state and
+cs.city = s.capital and cs.population < c.population
+    C.CITY	position 0,
+    S.STATE_NAME	position 1,
+    S.CAPITAL	position 2;
+
+define view LT_AVG_CITIES of c in cities with c.population <
+
+average c1.population of c1 in cities
+    C.CITY	position 0,
+    C.STATE	position 1;
+
+define view MIDDLE_AMERICA of c in cities with
+c.longitude_degrees between 79 and 104 and
+c.latitude_degrees between 33 and 42
+    C.CITY	position 0,
+    C.STATE	position 1,
+    C.ALTITUDE	position 2;
+
+define view POPULATION_DENSITY of p in populations
+	cross s in states over state
+	    P.STATE	position 0,
+    DENSITY_1950 double computed by (p.census_1950/s.area)	position 1,
+    DENSITY_1960 double computed by (p.census_1960/s.area)	position 2,
+    DENSITY_1970 double computed by (p.census_1970/s.area)	position 3,
+    DENSITY_1980 double computed by (p.census_1980/s.area)	position 4;
+
+define view PROVINCE_VIEW of p in political_subdivisions
+with p.pol_type = 'P'
+    PROVINCE FROM P.CODE	position 0,
+    PROVINCE_NAME FROM P.NAME	position 1,
+    P.AREA	position 2,
+    P.CAPITAL	position 3;
+
+define view SKI_CITIES of s in states
+cross ski in ski_areas with s.state = ski.state
+    SKI.NAME	position 0,
+    SKI.CITY	position 1,
+    S.STATE_NAME	position 2;
+
+define view SKI_STATES of c in cross_country
+reduced to c.state
+    C.STATE	position 0;
+
+define view SMALLER_CITIES of c in cities
+with c.population < 500000
+    C.CITY	position 0,
+    C.STATE	position 1,
+    C.POPULATION	position 2;
+
+define view SMALL_CAPITAL_CITY of s in states cross c in cities over state cross
+cs in cities with cs.state = c.state and
+cs.city = s.capital and cs.population < c.population
+reduced to s.state, s.capital
+    S.STATE_NAME	position 0,
+    S.CAPITAL	position 1;
+
+define view SMALL_CITY_TEAMS of b in baseball_teams
+cross c in cities with b.city = c.city and
+b.state = c.state and b.seating > c.population / 10
+      C.CITY	position 1,
+    C.STATE	position 2,
+    B.SEATING	position 3,
+    C.POPULATION	position 4;
+
+define view STATE_VIEW of p in political_subdivisions
+with p.pol_type = 'S'
+    STATE FROM P.CODE	position 0,
+    STATE_NAME FROM P.NAME	position 1,
+    P.AREA	position 2,
+    STATEHOOD FROM P.INCORPORATION	position 3,
+    P.CAPITAL	position 4;
+
+define view VARIED_XC of c in cross_country with c.comments containing 'varied'
+    C.AREA_NAME	position 0,
+    C.STATE	position 1,
+    C.COMMENTS	position 2;
+
+define view VILLES of c in cities with c.city containing 'ville'
+    C.CITY	position 0,
+    C.STATE	position 1,
+    C.POPULATION	position 2;
+
+
+/*	Index Definitions	*/
+
+
+define index BBT1 for BASEBALL_TEAMS unique
+	TEAM_NAME,
+	CITY;
+
+define index DUPE_CITY for CITIES 
+	STATE;
+
+define index CITIES_1 for CITIES unique
+	CITY,
+	STATE;
+
+define index MAYORS_1 for MAYORS unique
+	CITY,
+	STATE;
+
+define index PYXIS$INDEX for PYXIS$FORMS unique
+	PYXIS$FORM_NAME;
+
+define index QLI$PROCEDURE_INDEX for QLI$PROCEDURES unique
+	QLI$PROCEDURE_NAME;
+
+define index RIV1 for RIVERS unique
+	RIVER,
+	SOURCE;
+
+define index STATE_1 for STATES unique
+	STATE;
+
+
+/*	Generator Definitions	*/
+
+
+define generator BASEBALL_TEAMS;
+define generator CITIES;
+define generator CROSS_COUNTRY;
+define generator MAYORS;
+define generator POLITICAL_SUBDIVISIONS;
+define generator POPULATIONS;
+define generator POPULATION_CENTER;
+define generator PROVINCES;
+define generator PYXIS$FORMS;
+define generator QLI$PROCEDURES;
+define generator RIVERS;
+define generator RIVER_STATES;
+define generator SKI_AREAS;
+define generator STATES;
+define generator TOURISM;
+
+/*	Trigger Definitions	*/
+
+
+
+define trigger CROSS_COUNTRY$STORE for CROSS_COUNTRY
+	pre store 0:
+if not any c in cities
+	with c.city = new.city  and c.state = new.state
+		store x in cities
+			x.city = new.city;	
+			x.state = new.state;
+	end_store;
+
+	end_trigger;

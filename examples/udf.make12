@@ -1,0 +1,146 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+# udf_makefile - a makefile for the user-defined functions example
+# FOR UNIX SYSTEMS THAT DO NOT SUPPORT DYNAMIC LINKING
+#
+.SUFFIXES: .c .e
+.e.c :
+	gpre -z -e -n $<
+.c.o :
+	cc $(CFLAGS) -c $<
+#  
+#
+#  To build the user-defined function example:
+#	make -f make.udf new
+#	make -f make.udf 
+#
+#  To run the user-defined funcction example:
+#	1. setenv GDS_SERVER /(absolute path of this dir)/gds_pipe
+#  	2. Run udftest
+#	3. Run qli
+#	   a. ready atlas.gdb
+#	   b. list rdb$functions 
+# 	   c. use print statements to run them
+#	   d. test the upper function called
+#             from a trigger by storing a state with lower case abbreviation.
+#
+#  For your own functions:
+#	1. save a copy of this makefile, functions.c and udf.gdl.
+#	2. edit your copy of this makefile to:
+#		a. assign FUNCOBJS to equal your function object modules. 
+#		b. reference your database and your copy of udf.gdl 
+#		c. replace the udftest target with your test application
+#		(if you do not have a test application, just remove the 
+#		udftest target and have your database be the first target)
+#	3. edit your copy of udf.gdl to reference your database and functions. 
+#	4. edit functions.c to define your functions.
+#  
+#  DON'T FORGET TO:
+#  GDS_SERVER=./gds_pipe
+#  export GDS_SERVER
+#  BEFORE TESTING EXAMPLE OR YOUR OWN UDFs!
+#
+#  When you are satisfied with your testing, save 
+#  /usr/interbase/bin/gds_pipe and copy this directory's gds_pipe
+#  to /usr/interbase/bin, the default server. You will now have
+#  access to the user-defined functions without doing a setenv GDS_SERVER.
+#  When you are satisfied that local access to user_defined functions
+#  is working properly, you can make gds_dnet_server gds_inet_server,
+#  save a copy of these servers in /usr/interbase/bin and copy this
+#  directory's versions of them /usr/interbase/bin. Now remote processes
+#  have access to the user-defined functions. NOTE: user-defined functions
+#  are always performed locally.
+#  
+#  
+CFLAGS = -g
+FUNCOBJS = udf.o 
+FUNCGDB = atlas.gdb
+JRDLIB	= gds_b.a
+PIPELIB	= -lgds
+
+udftest :	udftest.o 
+		cc -g udftest.o $(PIPELIB) -o udftest
+		@echo "    REMEMBER TO: "
+		@echo "    GDS_SERVER=./gds_pipe "
+		@echo "    export GDS_SERVER "
+		@echo "    BEFORE RUNNING UDFTEST! "
+
+new :		
+		cp /usr/interbase/lib/gds_b.a .
+		cp /usr/interbase/examples/v3/functions.c .
+		cp /usr/interbase/examples/v3/udftest.e .
+		cp /usr/interbase/examples/v3/udf.c .
+		cp /usr/interbase/examples/v3/udf.gdl .
+		cp /usr/interbase/examples/v3/udf_trig.gdl .
+		chmod 666 *.a *.c *.e *.gdl 
+		gbak -r -z /usr/interbase/examples/v3/atlas.gbak atlas.gdb
+		
+gds_pipe :	gds_b.a
+		cc -g /usr/interbase/lib/gds_pipe.a gds_b.a -lm -o gds_pipe
+
+gds_dnet_server : gds_b.a
+		cc -g /usr/interbase/lib/gds_dnet_server.a gds_b.a -lm -o gds_dnet_server
+
+gds_inet_server : gds_b.a
+		cc -g /usr/interbase/lib/gds_inet_server.a gds_b.a -lm -o gds_inet_server
+
+functions :	functions.flag
+		rm udf.com
+
+trigger :	trigger.flag
+		rm udf.com
+
+functions.flag : udf.gdl gds_pipe
+		echo "#! /bin/sh; " > udf.com 
+		echo "GDS_SERVER=./gds_pipe; " >> udf.com 
+		echo "export GDS_SERVER; " >> udf.com
+		echo "gdef -z udf.gdl; " >> udf.com
+		echo "unset GDS_SERVER; " >> udf.com 
+		chmod 777 udf.com
+		/bin/csh < udf.com
+		echo "gdef'd udf.gdl" > functions.flag
+
+trigger.flag :	functions.flag udf_trig.gdl gds_pipe
+		echo "#! /bin/sh; " > udf.com 
+		echo "GDS_SERVER=./gds_pipe; " >> udf.com 
+		echo "export GDS_SERVER; " >> udf.com
+		echo "gdef -z udf_trig.gdl " >> udf.com
+		echo "unset GDS_SERVER; " >> udf.com 
+		chmod 777 udf.com
+		/bin/csh < udf.com
+		echo "gdef'd udf_trig.gdl" > trigger.flag
+
+gds_b.a :	funclib.o functions.o
+		ar rls gds_b.a functions.o funclib.o
+
+funclib.o : 	$(FUNCOBJS) 
+		ld -r $(FUNCOBJS) -o funclib.o
+
+udf.o :		udf.c
+		cc $(CFLAGS) -c udf.c
+
+udftest.o :	udftest.c
+functions.o :	functions.c
+udftest.c :	atlas.gdb functions.flag trigger.flag udftest.e
+
+udf_trig.gdl	udf.gdl udftest.e atlas.gdb : 
+		@echo "    TYPE : make new "
+		@echo "    to copy necessary files from /usr/interbase/examples"
+clean	:	
+		rm -f udf* functions.* funclib.o atlas.gdb gds_pipe
+		rm -f gds_*net_server gds_b.a

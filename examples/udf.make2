@@ -1,0 +1,143 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# udf_c.mkf4	Build C-language example of creating, defining, and calling UDF
+# designed specifically for sun/os4 with shareable object libraries
+#
+# To test functions using the shareable object libraries:
+#	make gdsflib.so
+#       make udftest
+# With a properly set up shareable object library and LD_LIBRARY_PATH
+# you will be able to test functions through qli and other interbase
+# utilities as well as the udftest application.
+#
+
+.SUFFIXES: .o .bin .c .e .gdb .gdl .mkf .mk4
+
+.gdl.gdb: ;	$(GDEF)	$<
+.e.c: ;		$(GPRE) -e -m $<
+.ea.a: ;	$(GPRE) -e -m $<
+.eftn.ftn: ;	$(GPRE) -e -m $<
+.epas.pas: ;	$(GPRE) -e -m $<
+.c.o: ;		$(CC) -w -g -c $<
+.c.bin: ;	$(CC) -w -g -c -pic -o $*_temp.o $<
+		mv $*_temp.o $*.bin
+.o: ;		$(LINK) $< $(OPTGDS) $(OPTBIN) $@
+
+
+# Sun definitions
+#
+CFLAGS=	
+IBEXE=	$(INTERBASE)/bin
+INTERBASE= /usr/interbase
+LINK=	cc
+OPTGDS=	-lgdslib
+OPTBIN=	-o
+
+# common definitions
+#
+GDSLIB=	$(INTERBASE)/lib/gdslib.so.0.1
+GBAK=	$(IBEXE)/gbak -z
+GCON=	$(IBEXE)/gcon -z
+GFIX=	$(IBEXE)/gfix -z
+GDEF=	$(IBEXE)/gdef -z
+GPRE=	$(IBEXE)/gpre -z
+GRST=	$(IBEXE)/grst -z
+QLI=	$(IBEXE)/qli -z
+
+#	Build special gdsflib that includes the udf.
+#       
+gdsflib.so:	udf.bin \
+		atlas.gdbf\
+		functions.bin
+	ld -o gdsflib.so.0.0 -assert pure-text functions.bin udf.bin
+
+
+#
+#	To test shareable objects use ln to define links to gdslib and gdsflib.
+#	gdslib.so will include the gdsflib.so found in the same directory
+#	so we define the current directory as the first place to look.
+#
+	-@ln -s $(INTERBASE)/lib/gdslib.so.0.1 libgdslib.so.0.1
+	-@ln -s gdsflib.so.0.0 libgdsflib.so.0.0
+	-@echo   
+	-@echo use setenv to define LD_LIBRARY_PATH to use local libraries
+	-@echo type: 		setenv LD_LIBRARY_PATH .
+	-@echo to make the right libraries available before you build udftest
+	-@echo
+	-@echo You can also make udf_triggers if you want to look at how
+	-@echo user defined functions work in triggers.
+	-@echo   
+
+udf_triggers:	udf_trig.gdl
+	$(GDEF)	udf_trig.gdl
+
+#	Build the udf object module for inclusion into special library.
+#
+udf.bin:		udf.c
+udf.o:			udf.c
+#	Build the database against which to build the udf test.
+#	
+atlas.gdb \
+atlas.gdbf: \
+		$(INTERBASE)/examples/v3/atlas.gbak \
+		udf.gdl
+	$(GBAK)	-r $(INTERBASE)/examples/v3/atlas.gbak  \
+		atlas.gdb
+	$(GDEF)	udf.gdl
+
+##	Build the program to test the udf.
+#	Requires the specially-built gdsflib that includes the udf.
+#
+udftest:	udftest.o 
+	$(LINK) udftest.o \
+		$(OPTGDS) \
+		$(OPTBIN) $@
+udftest.o:	udftest.c
+udftest.c:	udftest.e \
+		atlas.gdbf 
+
+#	The following rules get all the basic ingredients (except
+#	the makefile itself) from the InterBase examples directory.
+
+functions.c:	\
+		$(INTERBASE)/examples/v3/functions.c
+	cp	$(INTERBASE)/examples/v3/functions.c functions.c
+udf.c: \
+		$(INTERBASE)/examples/v3/udf.c
+	cp	$(INTERBASE)/examples/v3/udf.c udf.c
+
+udf.gdl: \
+		$(INTERBASE)/examples/v3/udf.gdl
+	cp	$(INTERBASE)/examples/v3/udf.gdl udf.gdl
+
+udf_trig.gdl: \
+		$(INTERBASE)/examples/v3/udf_trig.gdl
+	cp	$(INTERBASE)/examples/v3/udf_trig.gdl udf_trig.gdl
+
+udftest.e: \
+		$(INTERBASE)/examples/v3/udftest.e
+	cp	$(INTERBASE)/examples/v3/udftest.e udftest.e
+
+#	Clean up by deleting all files we created, except basic ingredients.
+#
+clean:
+	-@rm	atlas.gdb atlas.gdbf
+	-@rm 	udf.o  functions.o
+	-@rm	udftest udftest.o udftest.c 
+	-@rm	gdsflib.so.0.0
+	-@rm 	libgdsflib.so.0.0
+	-@rm	libgdslib.so.0.1

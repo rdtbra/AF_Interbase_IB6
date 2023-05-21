@@ -1,0 +1,282 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+define database "cs_demo.gdb"
+	page_size 1024;
+
+
+/*	Function Definitions	*/
+
+/* 	Note: The definition for module_name must point to the absolute
+ *	path of the UDF library that implements character set translations.
+ */
+
+define function CONVERT_437_TO_LATIN1
+	module_name 'CONVERT_PATH/c437_lat'
+	entry_point 'c_convert_437_to_latin1'
+		 cstring [256] sub_type 153 by reference return_value,
+		 cstring [256] sub_type 101 by reference;
+
+define function CONVERT_LATIN1_TO_437
+	module_name 'CONVERT_PATH/clat_437'
+	entry_point 'c_convert_latin1_to_437'
+		 cstring [256] sub_type 101 by reference return_value,
+		 cstring [256] sub_type 153 by reference;
+
+define function N_CONVERT_437_TO_LATIN1
+	module_name 'CONVERT_PATH/n437_lat'
+	entry_point 'n_convert_437_to_latin1'
+		 char [256] sub_type 153 by reference return_value,
+		 char [256] sub_type 101 by reference,
+		 short by reference;
+
+define function N_CONVERT_LATIN1_TO_437
+	module_name 'CONVERT_PATH/nlat_437'
+	entry_point 'n_convert_latin1_to_437'
+		 char [256] sub_type 101 by reference return_value,
+		 char [256] sub_type 153 by reference,
+		 short by reference;
+
+
+/*	Global Field Definitions	*/
+
+define field CITY char [20] sub_type 101;
+define field CLIENT char [32] sub_type 101;
+define field CLIENTNO char [6];
+define field COUNTRY char [15];
+define field DESCRIPTION char [100] sub_type 153;
+define field FIRSTNAME char [32] sub_type 101;
+define field LASTNAME char [32] sub_type 101;
+define field NAME char [30] sub_type 153;
+define field PC_DESCRIPTION char [100] sub_type 101;
+define field PC_PRODUCTNAME char [20] sub_type 101;
+define field POSTCODE char [10];
+define field PRODUCTNAME char [20] sub_type 153;
+define field STREET_ADDRESS char [50] sub_type 101;
+define field USERID short;
+
+
+/*	Relation Definitions	*/
+
+
+define relation CLIENTS
+{
+	This relation is viewable & updatable from DOS
+	as each field that can contain international characters
+	has a subtype matching the DOS character sets.
+}
+    CLIENTNO	position 1,
+    CLIENT	position 2,
+    STREET_ADDRESS	position 3,
+    CITY	position 4,
+    POSTCODE	position 5,
+    COUNTRY	position 6;
+
+
+
+define view UNIX_CLIENTS of c in clients
+{
+	This view can be used from Unix to view, but not update, the Clients
+	relation.  Computed fields in the view transliterate the character
+	set to ISO-Latin1 for the Unix process.
+}
+    C.CLIENTNO	position 1,
+    CLIENT computed by (n_convert_437_to_latin1( c.CLIENT, 32 ) )	position 2,
+    STREET_ADDRESS computed by (n_convert_437_to_latin1( c.STREET_ADDRESS, 50 ) )	position 3,
+    CITY computed by (n_convert_437_to_latin1( c.CITY, 20 ) )	position 4,
+    C.POSTCODE	position 5,
+    C.COUNTRY	position 6;
+
+
+
+
+
+define relation CONTACTS
+{
+	This relation is viewable & updatable from DOS.
+
+	It can be viewed, but not updated, from Unix using
+	the UNIX_FIRSTNAME & UNIX_LASTNAME fields.
+
+	A Unix process should not use the FIRSTNAME/LASTNAME fields,
+	likewise a DOS process should not use the UNIX_FIRSTNAME/UNIX_LASTNAME fields.
+}
+    CONTACTNO based on CLIENTNO	position 1,
+    CLIENTNO	position 2,
+    FIRSTNAME	position 3,
+    UNIX_FIRSTNAME computed by (n_convert_437_to_latin1( FIRSTNAME, 30 ))	position 4,
+    LASTNAME	position 5,
+    UNIX_LASTNAME computed by (n_convert_437_to_latin1( LASTNAME, 30 ))	position 6;
+
+
+define view PC_CONTACTS of c in CONTACTS
+{
+	View of contacts suitable for a PC
+}
+	c.CONTACTNO,
+	c.CLIENTNO,
+	c.FIRSTNAME,
+	c.LASTNAME;
+
+
+define view UNIX_CONTACTS of c in CONTACTS
+{
+	View of contacts suitable for a Unix process
+}
+	c.CONTACTNO,
+	c.CLIENTNO,
+	FIRSTNAME from c.UNIX_FIRSTNAME,
+	LASTNAME  from c.UNIX_LASTNAME;
+
+
+
+
+
+define relation PRODUCTS
+{
+	This relation is viewable & updatable from both DOS and Unix.
+
+	Unix based processes should use the PRODUCTNAME & DESCRIPTION fields.
+
+	DOS based processes should use the PC_PRODUCTNAME & PC_DESCRIPTION fields.
+}
+    PRODUCTNO based on CLIENTNO	position 1,
+    PRODUCTNAME		position 2,
+    PC_PRODUCTNAME	position 3,
+    DESCRIPTION		position 4,
+    PC_DESCRIPTION	position 5;
+
+
+
+define view PC_PRODUCTS of p in PRODUCTS
+	P.PRODUCTNO,
+	PRODUCTNAME from p.PC_PRODUCTNAME,
+	DESCRIPTION from p.PC_DESCRIPTION;
+
+define view UNIX_PRODUCTS of p in PRODUCTS
+	P.PRODUCTNO,
+	P.PRODUCTNAME,
+	P.DESCRIPTION;
+
+
+
+
+define relation USERS
+{
+	This relation is viewable & updatable from Unix.
+
+	DOS Processes should view the relation using the view PC_USERS
+}
+    USERID	position 1,
+    NAME	position 2;
+
+
+define view PC_USERS of u in USERS
+	u.USERID,
+	NAME computed by (n_convert_latin1_to_437( u.NAME, 30 ));
+
+
+
+
+/*	Index Definitions	*/
+
+
+define index CLIENTS_KEY for CLIENTS unique
+	CLIENTNO;
+
+define index CONTACTS_KEY for CONTACTS unique
+	CONTACTNO;
+
+define index PRODUCTS_KEY for PRODUCTS unique
+	PRODUCTNO;
+
+
+
+
+
+/*	Trigger Definitions	*/
+
+
+
+define trigger AUTOCONVERT_STRINGS_ON_MODIFY for PRODUCTS
+	pre modify 0:
+begin
+if new.productname ne old.productname 
+      begin
+      new.pc_productname = convert_latin1_to_437( new.productname );
+      end
+else if new.pc_productname ne old.pc_productname
+      begin
+      new.productname    = convert_437_to_latin1( new.pc_productname );
+      end;
+
+if new.description ne old.description 
+      begin
+      new.pc_description = convert_latin1_to_437( new.description );
+      end
+else if new.pc_description ne old.pc_description
+      begin
+      new.description    = convert_437_to_latin1( new.pc_description );
+      end;
+end;
+
+	
+	end_trigger
+	{
+	This trigger will keep the field pairs productname/pc_productname
+	and description/pc_description in sync.
+
+	A field may be updated from either Unix or DOS -
+	the "paired" field in the other character set is updated
+	on modify by this trigger.
+
+	Note that should both "paired" fields be modified, the Unix
+	modification will superseed the DOS modification.
+	};
+
+
+
+
+define trigger AUTOCONVERT_STRINGS_ON_STORE for PRODUCTS
+	pre store 0:
+begin
+if new.productname not missing
+      begin
+      new.pc_productname = convert_latin1_to_437( new.productname );
+      end
+else if new.pc_productname not missing
+      begin
+      new.productname    = convert_437_to_latin1( new.pc_productname );
+      end;
+
+if new.description not missing
+      begin
+      new.pc_description = convert_latin1_to_437( new.description );
+      end
+else if new.pc_description not missing
+      begin
+      new.description    = convert_437_to_latin1( new.pc_description );
+      end
+end;
+	
+	end_trigger
+	{
+	This trigger complements AUTOCONVERT_STRINGS_ON_MODIFY.
+
+	Newly stored records have the "paired" field set.
+	};

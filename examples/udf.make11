@@ -1,0 +1,121 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.udf	Build C-language example of creating, defining, and calling UDF
+#		designed for SGI shared libraries
+#
+# To build the user-defined function example:
+#	make -f make.udf new
+#	make -f make.udf funclib
+#	make -f make.udf
+#
+#
+#  To run the user-defined function example:
+#	1. Run udftest
+#	2. Run qli
+#	   a. ready atlas.gdb
+#	   b. list rdb$functions
+#	   c. use print statements to run them
+#	   d. test the upper function called from a trigger
+#	      by storing a state with lower case abbreviation.
+#
+
+.SUFFIXES: .o .c .e .gdb .gdl
+.gdl.gdb:
+	$(GDEF)	$<
+.e.c:
+	$(GPRE) -e -n $<
+.c.o:
+	cc -c -O -DSHLIB_DEFS $<
+
+# definitions
+#
+CFLAGS=		-g
+IBEXE=		$(INTERBASE)/bin
+INTERBASE=	/usr/interbase
+#
+GBAK=		$(IBEXE)/gbak -z
+GDEF=		$(IBEXE)/gdef -z
+GPRE=		$(IBEXE)/gpre -z
+
+
+udftest :	udftest.o
+		cc -g udftest.o -lgds_s -lgdsf_s -o udftest
+		@echo "To run the udftest type: udftest"
+		
+new :
+		cp $(INTERBASE)/examples/v3/shrudf.c .
+		cp $(INTERBASE)/examples/v3/udf.bind .
+		cp $(INTERBASE)/examples/v3/functions.c .
+		cp $(INTERBASE)/examples/v3/udftest.e .
+		cp $(INTERBASE)/examples/v3/udf.c .
+		cp $(INTERBASE)/examples/v3/udf.gdl .
+		cp $(INTERBASE)/examples/v3/udf_trig.gdl .
+		chmod 666 *.c *.e *.gdl
+		$(GBAK) -r $(INTERBASE)/examples/v3/atlas.gbak atlas.gdb
+
+funclib :	funclib.flag
+
+functions :	functions.flag
+	    
+trigger :	trigger.flag
+
+funclib.flag :	udf.o functions.o shrudf.o udf.bind
+		mkshlib -s udf.bind -h gdsf_s.a -t gdsf_s -q
+		echo "shared function library created" > funclib.flag
+		@echo "#! /bin/sh" >funclib.com
+		@echo "CURDIR=`pwd`" >>funclib.com
+		@echo 'echo "Now you must modify the /usr/lib/libgdsf_s link to point"' >>funclib.com
+		@echo 'echo "to $$CURDIR/gdsf_s and modify the /usr/lib/libgdsf_s.a link"' >>funclib.com
+		@echo 'echo "to point to $$CURDIR/gdsf_s.a.  When you have done this,"' >>funclib.com
+		@echo 'echo "type make -f make.udf"' >>funclib.com
+		@chmod 777 funclib.com
+		@sh ./funclib.com
+		@rm funclib.com
+
+functions.flag : udf.gdl funclib.flag
+		$(GDEF) udf.gdl
+		echo "gdef'd udf.gdl" > functions.flag
+
+trigger.flag :	functions.flag udf_trig.gdl
+		$(GDEF) udf_trig.gdl
+		echo "gdef'd udf_trig.gdl" > trigger.flag
+
+functions.o :	functions.c
+udf.o	:	udf.c
+shrudf.o :	shrudf.c
+
+udftest.c :	atlas.gdb functions.flag trigger.flag udftest.e
+udftest.o :	udftest.c
+	cc -c $(CFLAGS) $<
+
+functions.c udf_trig.gdl udf.gdl udftest.e shrudf.c udf.bind atlas.gdb :
+		@echo "    TYPE: make -f make.udf new"
+		@echo "    to copy necessary files from $(INTERBASE)/examples"
+
+qli :
+	cc /usr/interbase/lib/qlilib.a -lgds_s -lgdsf_s -o qli
+
+gbak :
+	cc /usr/interbase/lib/gbaklib.a -lgds_s -lgdsf_s -o gbak
+
+gds_inet_srvr :
+	cc /usr/interbase/lib/gds_inet_svr.a -lgds_s -lgdsf_s -o gds_inet_srvr
+
+
+clean :
+		rm -f udf* functions.* funclib.* atlas.gdb
+		rm -f gdsf_s* shrudf.* *.bind

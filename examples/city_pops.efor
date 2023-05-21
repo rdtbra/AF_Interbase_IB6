@@ -1,0 +1,123 @@
+C  The contents of this file are subject to the Interbase Public
+C  License Version 1.0 (the "License"); you may not use this file
+C  except in compliance with the License. You may obtain a copy
+C  of the License at http://www.Inprise.com/IPL.html
+C
+C  Software distributed under the License is distributed on an
+C  "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+C  or implied. See the License for the specific language governing
+C  rights and limitations under the License.
+C
+C  The Original Code was created by Inprise Corporation
+C  and its predecessors. Portions created by Inprise Corporation are
+C  Copyright (C) Inprise Corporation.
+C
+C  All Rights Reserved.
+C  Contributor(s): ______________________________________.
+
+      PROGRAM CITY_POPS
+
+      !*************************************************************
+      ! This program illustrates the use of sub-forms.
+      ! A form is displayed and the user inputs a state code.
+      ! Then the cities in that state are displayed along with
+      ! their populations. The user can then update the populations
+      ! if desired, and go on to choose a state again. When
+      ! no state code is entered, the program will ask whether
+      ! or not to commit the updates and then exits.
+      !************************************************************
+
+      CHARACTER*1 ANSWER
+      LOGICAL FOUND
+
+      DATABASE DB = 'atlas.gdb'
+
+      !* Create forms window *
+      GDS__HEIGHT = 20
+      GDS__WIDTH = 80
+      CREATE_WINDOW
+
+      !* Open database and start transaction *
+      READY
+      START_TRANSACTION
+
+      !* Loop until user leaves form without filling in a state code *
+      FOUND = .TRUE.
+100   CONTINUE
+        FOR FORM F IN CITY_POPULATIONS
+
+          ! Set instructional message to be displayed in form.
+          ! If user just entered state code for a non-existant state,
+          ! say so in the message. 
+
+          IF (FOUND) THEN
+            F.TAG = 'Enter State Code (enter nothing to exit)'
+            FOUND = .FALSE.
+          ELSE
+            F.TAG =
+     +      'State not found; Enter State Code (enter nothing to exit)'
+          END IF
+          !* Display form and await entering of state code *
+          DISPLAY F DISPLAYING TAG ACCEPTING STATE
+
+          IF (F.STATE.STATE .EQ. PYXIS__OPT_NULL) GO TO 101
+
+          !* Look for state *
+          FOR S IN STATES WITH S.STATE = F.STATE
+
+            !* Note that state was found *
+            FOUND = .TRUE.
+
+            !* Put city information into subform *
+            FOR C IN CITIES WITH C.STATE = S.STATE SORTED BY C.CITY
+              PUT_ITEM FC IN F.CITY_POP_LINE
+                FC.CITY = C.CITY
+                FC.POPULATION = C.POPULATION
+              END_ITEM
+            END_FOR
+
+            !* Put state information into form *
+            F.STATE = S.STATE
+            F.STATE_NAME = S.STATE_NAME
+            F.TAG = 'Update populations if needed'
+
+            !* Display current form and allow populations
+            !* to be updated *
+            DISPLAY F DISPLAYING STATE, STATE_NAME, CITY_POP_LINE.CITY,
+     *         CITY_POP_LINE.POPULATION, TAG
+     *         ACCEPTING CITY_POP_LINE.POPULATION
+
+            !* Perform modifications for any updated populations *
+            FOR_ITEM FC IN F.CITY_POP_LINE
+              IF (FC.POPULATION.STATE .EQ. PYXIS__OPT_USER_DATA) THEN
+                FOR C IN CITIES WITH C.CITY = FC.CITY
+     *             AND C.STATE = F.STATE
+                  MODIFY C USING
+                    C.POPULATION = FC.POPULATION
+                  END_MODIFY
+                END_FOR
+              END IF
+            END_ITEM
+          END_FOR
+          GO TO 100
+101     CONTINUE
+
+        END_FORM
+
+      !* Make form go away *
+      DELETE_WINDOW
+
+      !* Check to see whether or not to commit updates *
+      WRITE (*,*) 'Do you want to commit the updates (Y/N): '
+      READ (*,1000) ANSWER
+1000  FORMAT(A1)
+      IF ((ANSWER .EQ. 'Y') .OR. (ANSWER .EQ. 'y')) THEN
+        COMMIT
+      ELSE
+        ROLLBACK
+      END IF
+
+      !* Close down *
+      FINISH
+      STOP
+      END

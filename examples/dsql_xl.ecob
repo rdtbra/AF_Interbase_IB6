@@ -1,0 +1,109 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. MSQL2.
+*
+* The contents of this file are subject to the Interbase Public
+* License Version 1.0 (the "License"); you may not use this file
+* except in compliance with the License. You may obtain a copy
+* of the License at http://www.Inprise.com/IPL.html
+*
+* Software distributed under the License is distributed on an
+* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+* or implied. See the License for the specific language governing
+* rights and limitations under the License.
+*
+* The Original Code was created by Inprise Corporation
+* and its predecessors. Portions created by Inprise Corporation are
+* Copyright (C) Inprise Corporation.
+*
+* All Rights Reserved.
+* Contributor(s): ______________________________________.
+*
+
+ ENVIRONMENT DIVISION.
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+* Include the SQL Communications Area */
+     EXEC SQL
+          INCLUDE SQLCA
+     END-EXEC
+
+ 01  FLAG1 PIC S9(4) USAGE COMP.
+ 01  FLAG2 PIC S9(4) USAGE COMP.
+ 01  FLAG3 PIC S9(4) USAGE COMP.
+ 01  D-STAT PIC ZZZ9.
+ 01  D-POP PIC ZZZ,ZZZ,ZZ9.
+ 01  CITY PIC X(25).
+ 01  STATE PIC XX.
+ 01  POPULATION PIC S9(9) USAGE COMP.
+ 01  SQLDA.
+     02 SQLDAID PIC X(8).
+     02 SQLDABC PIC S9(9) USAGE IS COMP.
+     02 SQLN PIC S9(4) USAGE IS COMP VALUE IS 3.
+     02 SQLD PIC S9(4) USAGE IS COMP.
+     02 SQLVAR OCCURS 3 TIMES.
+        03 SQLTYPE PIC S9(4) USAGE IS COMP.
+        03 SQLLEN PIC S9(4) USAGE IS COMP.
+        03 SQLDATA PIC S9(9) USAGE IS COMP.
+        03 SQLIND PIC S9(9) USAGE IS COMP.
+        03 SQLNAME-LENGTH PIC S9(4) USAGE IS COMP.
+        03 SQLNAME PIC X(30).
+ 01  QUERY PIC X(61).
+ PROCEDURE DIVISION.
+ MAIN SECTION.
+ 
+     MOVE
+     "SELECT CITY, STATE, POPULATION FROM CITIES WHERE STATE='NY'"
+         TO QUERY
+     EXEC SQL
+         WHENEVER SQLERROR GO TO ERROR-END
+         END-EXEC
+
+     EXEC SQL
+         PREPARE Q INTO SQLDA FROM :QUERY
+         END-EXEC
+
+*     establish a concurrence between the SQLDA pointer variables and the
+*     program variables that will receive the data.  Force text fields to
+*     SQL_TEXT (452) because COBOL won't handle VARYING TEXT gracefully.
+*     Make that 453 because the field has an indicator variable and
+*     indicator variables are associated with fields whose datatype is odd.
+
+     CALL "isc_baddress" USING @ CITY GIVING SQLDATA(1).
+     CALL "isc_baddress" USING @ FLAG1 GIVING SQLIND(1).
+     MOVE 453 TO SQLTYPE(1).
+
+     CALL "isc_baddress" USING @ STATE GIVING SQLDATA(2).
+     CALL "isc_baddress" USING @ FLAG2 GIVING SQLIND(2).
+     MOVE 453 TO SQLTYPE(2).
+
+     CALL "isc_baddress" USING @ POPULATION GIVING SQLDATA(3)
+     CALL "isc_baddress" USING @ FLAG3 GIVING SQLIND(3)
+
+     EXEC SQL
+         DECLARE C CURSOR FOR Q
+         END-EXEC
+
+     EXEC SQL
+         OPEN C
+         END-EXEC
+
+     EXEC SQL
+         FETCH C USING DESCRIPTOR SQLDA
+         END-EXEC
+
+     PERFORM UNTIL SQLCODE NOT = 0
+     MOVE POPULATION TO D-POP
+     DISPLAY CITY, STATE, D-POP
+     EXEC SQL
+         FETCH C USING DESCRIPTOR SQLDA
+         END-EXEC
+ END-PERFORM.
+
+     EXEC SQL
+         COMMIT RELEASE
+         END-EXEC
+     STOP RUN.
+
+ ERROR-END.
+     CALL "gds__print_status" USING GDS-STATUS-VECTOR
+     STOP RUN.

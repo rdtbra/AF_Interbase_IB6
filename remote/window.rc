@@ -1,0 +1,140 @@
+/*
+ * The contents of this file are subject to the Interbase Public
+ * License Version 1.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy
+ * of the License at http://www.Inprise.com/IPL.html
+ *
+ * Software distributed under the License is distributed on an
+ * "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+ * or implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ *
+ * The Original Code was created by Inprise Corporation
+ * and its predecessors. Portions created by Inprise Corporation are
+ * Copyright (C) Inprise Corporation.
+ *
+ * All Rights Reserved.
+ * Contributor(s): ______________________________________.
+ */
+/****************************************************************************
+
+
+window.rc
+
+produced by Borland Resource Workshop
+
+
+*****************************************************************************/
+
+#include "window.rh"
+#include "../jrd/version_95.rc"
+#include "property.rc"
+
+STRINGTABLE 
+{
+ IDS_PNP1, "A device which is in use by InterBase is going to be removed.  The InterBase server will have to be shotdown before the device can be removed."
+ IDS_PNP2, "Any uncommitted data will be lost.  Choose OK when you are ready to shutdown the server, or Cancel to abort the removal of the device."
+ IDS_PNP3, "Note: The removal of this device may not be cancelable in which case another warning will follow."
+ IDS_QUIT, "connections active; Are you sure you want to exit?"
+ IDS_REGERROR, "Error registering main window class"
+ IDS_ALREADYSTARTED "The InterBase Server failed to startup\r\nbecause another instance of the server\r\nis already running." 
+ IDS_MAPERROR, "The InterBase server failed to startup\r\nbecause a needed resource is in use.\r\nInsure that all previously connected\r\nInterBase client applications have\r\nterminated and try again."
+ IDS_LIC_BADFILE, "The InterBase license file is missing or corrupt.\r\nCheck that InterBase is installed correctly."
+ IDS_LIC_NOREMOTE, "InterBase remote server support is not licensed."
+ IDS_LIC_NOLOCAL, "InterBase local server support is not licensed."
+ IDS_LIC_NOTHING, "InterBase database support is not licensed."
+ IDS_PROPERTIES, "P&roperties"
+ IDS_SHUTDOWN, "&Shutdown"
+}
+
+IDI_IBSVR_SMALL ICON 
+{
+ '00 00 01 00 01 00 10 10 00 01 00 00 00 00 68 05'
+ '00 00 16 00 00 00 28 00 00 00 10 00 00 00 20 00'
+ '00 00 01 00 08 00 00 00 00 00 40 01 00 00 00 00'
+ '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
+ '00 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 FF FF FF 00 00 66'
+ '00 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 00 FF 66 00 00 FF'
+ '99 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 33 66 FF 00 33 99'
+ '00 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 66 00 33 00 66 00'
+ '66 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 66 99 99 00 66 99'
+ 'CC 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 99 00 FF 00 99 33'
+ '00 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 99 CC 33 00 99 CC'
+ '66 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 CC 33 99 00 CC 33'
+ 'CC 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 CC CC FF 00 CC FF'
+ '00 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 FF 66 99 00 FF 66'
+ 'CC 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 BD B5 94 00 DE D6'
+ 'BD 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 80 80 00 00 C0 C0 C0 00 C0 DC'
+ 'C0 00 F0 CA A6 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 C6 9C 73 00 84 63'
+ '42 00 00 00 80 00 00 80 00 00 00 80 80 00 80 00'
+ '00 00 80 00 80 00 F0 FB FF 00 A4 A0 A0 00 80 80'
+ '80 00 00 00 FF 00 00 FF 00 00 00 FF FF 00 FF 00'
+ '00 00 FF 00 FF 00 FF FF 00 00 FF FF FF 00 00 00'
+ '00 00 00 00 00 00 0C 0C 0C 0C 0C 0C 00 00 00 00'
+ '00 00 00 00 00 0C 00 00 00 00 00 00 00 00 00 00'
+ '0C 0C 0C 0C 0C 00 0C 07 0C 07 0C 07 00 00 00 0C'
+ '0C 0C 0C 0C 00 0C 0C 07 0C 07 0C 07 00 00 00 00'
+ '00 00 00 00 00 0C 0C 07 0C 07 0C 07 00 00 00 00'
+ '00 04 04 04 00 0C 0C 07 0C 07 0C 07 00 00 00 04'
+ '04 02 02 02 00 0C 0C 07 0C 07 0C 07 00 00 00 04'
+ '02 02 02 0E 00 0C 0C 07 0C 07 0C 07 00 00 04 02'
+ '02 02 02 02 00 0C 0C 07 0C 07 0C 07 00 00 04 02'
+ '02 0E 02 0E 00 0C 0C 07 0C 07 0C 07 00 00 04 0E'
+ '0E 0E 0E 0E 00 0C 0C 07 0C 0C 0C 07 00 00 04 0E'
+ '0E 13 13 0E 00 0C 0C 07 07 07 07 07 00 00 04 0E'
+ '13 13 13 13 00 0C 0C 07 07 07 0E 07 00 00 00 04'
+ '0E 13 13 13 00 0C 0C 07 07 07 0D 07 00 00 00 04'
+ '04 0E 0E 0E 02 00 0C 07 07 07 07 07 00 00 00 00'
+ '00 04 04 04 04 00 00 00 00 00 00 00 00 00 FF 03'
+ '00 00 FE 01 00 00 C0 01 00 00 80 01 00 00 FC 01'
+ '00 00 E0 01 00 00 80 01 00 00 80 01 00 00 00 01'
+ '00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01'
+ '00 00 80 01 00 00 80 01 00 00 E1 01 00 00'
+}

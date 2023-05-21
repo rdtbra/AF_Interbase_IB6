@@ -1,0 +1,742 @@
+(*******************************************************************)
+(*                                                                 *)
+(* The contents of this file are subject to the Interbase Public   *)
+(* License Version 1.0 (the "License"); you may not use this file  *)
+(* except in compliance with the License. You may obtain a copy    *)
+(* of the License at http://www.Inprise.com/IPL.html                 *)
+(*                                                                 *)
+(* Software distributed under the License is distributed on an     *)
+(* "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express     *)
+(* or implied. See the License for the specific language governing *)
+(* rights and limitations under the License.                       *)
+(*                                                                 *)
+(* The Original Code was created by Inprise Corporation *)
+(* and its predecessors. Portions created by Inprise Corporation are     *)
+(* Copyright (C) Inprise Corporation. *)
+(*                                                                 *)
+(* All Rights Reserved.                                            *)
+(* Contributor(s): ______________________________________.         *)
+(*******************************************************************)
+
+program array_demo (input, output);
+
+database db = 'atlas.gdb';
+
+const
+	RAIN = 1;
+        TEMP = 2;
+                                                    
+type
+	state_t = based_on cities.state;
+	city_t = based_on cities.city;
+
+	mult_array = based_on cities.rain_array;
+var
+	rain_array : array [1..12] of double;
+	temperature_array : array [1..12] of double;
+
+	state : state_t;
+	city  : city_t;
+	year  : integer;
+
+	trans : gds__handle;
+
+	cont : integer;
+
+
+(***********************************************************)
+(*                                                         *)
+(* function to query the user for a city and state to      *)
+(* process and also to return the status of the query.     *)
+(*                                                         *)
+(***********************************************************)
+function get_city_state : integer; 
+var 
+	i : integer;
+	loop : integer;
+begin
+	loop := 0;
+
+	while loop = 0 do
+	begin
+
+		state := ' ';
+		city  := ' ';
+
+		(* build a dynamic menu of State Codes to choose from *)
+
+	        FOR_MENU S
+
+			S.TITLE_TEXT := 'Choose a STATE - F1 to ABORT';
+			S.TITLE_LENGTH := 30;
+
+			FOR st IN STATES SORTED BY st.STATE
+				PUT_ITEM SY IN S
+					for i := 1 to 4 do
+						SY.ENTREE_TEXT[i] := st.STATE[i];
+
+					SY.ENTREE_LENGTH := sizeof(st.STATE);
+					SY.ENTREE_VALUE := 0;
+				END_ITEM;
+			END_FOR;
+	
+			DISPLAY S VERTICAL;
+
+			(* If PF1 pressed then exit this routine and return EXIT status *)
+
+			if S.TERMINATOR = PYXIS__KEY_PF1 then
+			begin
+				get_city_state := -1;
+				return;
+			end;
+	
+			for i := 1 to 4 do
+				state[i] := S.ENTREE_TEXT[i];
+
+		END_MENU;
+
+		(* build a dynamic menu of Cities from the State code picked above *)
+
+	        FOR_MENU S
+	
+			S.TITLE_TEXT := 'Choose a CITY - F1 to ABORT';
+			S.TITLE_LENGTH := 30;
+	
+			FOR st IN CITIES WITH st.STATE = state SORTED BY st.CITY
+				PUT_ITEM SY IN S
+					for i := 1 to 25 do
+						SY.ENTREE_TEXT[i] := st.CITY[i];
+					SY.ENTREE_LENGTH := sizeof(st.CITY);
+					SY.ENTREE_VALUE := 0;
+				END_ITEM;
+
+				(* Update counter to indicate a city was found for state code *)
+
+				loop := loop + 1;
+
+			END_FOR;
+	
+			DISPLAY S VERTICAL;
+	
+			(* If PF1 pressed then exit this routine and return EXIT status *)
+
+			if S.TERMINATOR = PYXIS__KEY_PF1 then
+			begin
+				get_city_state := -1;
+				return;
+			end;
+	
+			for i := 1 to 25 do
+				city[i] := S.ENTREE_TEXT[i];
+
+		END_MENU;
+
+		(* Check loop variable to see if any cities were found to pick from   *)
+		(* if none found ask the user if they want to pick another state code *)
+		(* and try again                                                      *)
+
+		if loop = 0 then
+		begin
+			(* no cities found for this state *)
+
+ 			case_menu "No Cities for Selected State - Pick Option"
+				menu_entree        "Select Another State" :
+					get_city_state := 0;
+
+				menu_entree        "EXIT" :
+					begin
+						get_city_state := -1;
+						return;
+					end;
+			end_menu;
+		end;
+
+	end; (* end of while loop = 0 *)
+
+	get_city_state := loop;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* function to query the user for the year to modify and   *)
+(* return that to the caller.                              *)
+(*                                                         *)
+(***********************************************************)
+procedure get_year( rain_or_temp : integer);
+begin
+	if rain_or_temp = RAIN then
+	begin
+		case_menu "Store / Modify Rain Fall - Pick Year"
+			menu_entree        "1973" :
+				year := 1973;
+	
+			menu_entree        "1974" :
+				year := 1974;
+	
+			menu_entree        "1975" :
+				year := 1975;
+	
+	       		menu_entree        "EXIT" :
+				year := 0;
+		end_menu;
+	end
+	else 
+	begin
+		case_menu "Store / Modify Temperatures - Pick Year"
+			menu_entree        "1973" :
+				year := 1973;
+	
+			menu_entree        "1974" :
+				year := 1974;
+	
+			menu_entree        "1975" :
+				year := 1975;
+	
+	       		menu_entree        "EXIT" :
+				year := 0;
+		end_menu;
+	end;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* modify rain fall figures for a city and state           *)
+(* combination for 1973 - 1975                             *)
+(*                                                         *)
+(***********************************************************)
+procedure mod_rain;
+var
+	status,
+	i,
+	j,
+	loop, 
+	loop2 : integer;
+
+begin
+	loop := 1;
+	loop2 := 0;
+
+	trans := nil;
+
+	START_TRANSACTION trans;
+        
+	(* go and get a city & state to operate on *)
+
+	status := get_city_state;
+
+	if status = -1 then
+	begin
+		ROLLBACK trans;
+		return;
+	end;
+
+	(* loop on year to modify until EXIT is choosen *)
+                                
+	get_year (RAIN);
+	while year <> 0 do
+	begin
+
+		for form (TRANSACTION_HANDLE trans) f in arrays
+                     
+			for (TRANSACTION_HANDLE trans) first 1 c in cities with c.city = city and c.state = state
+
+				(* check and see if array had previously been populated *)
+				(* if not, set local array to all zero's                *) 
+				(* else copy in values from database to local array     *)
+
+				if c.rain_array.NULL = GDS__FALSE then
+				begin
+					for i := 1 to 12 do
+					begin
+						rain_array[i] := c.rain_array[year,i];
+					end;
+				end 
+				else 
+				begin
+					for i := 1 to 12 do
+					begin
+						rain_array[i] := 0;
+					end;
+				end;
+
+			end_for;
+
+			(* assign local array values to form fields *)
+
+			f.m1 := rain_array [1];
+			f.m2 := rain_array [2];
+			f.m3 := rain_array [3];
+			f.m4 := rain_array [4];
+			f.m5 := rain_array [5];
+			f.m6 := rain_array [6];
+			f.m7 := rain_array [7];
+			f.m8 := rain_array [8];
+			f.m9 := rain_array [9];
+			f.m10 := rain_array [10];
+			f.m11 := rain_array [11];
+			f.m12 := rain_array [12];
+	
+			f.msg_line1 := '          Store / Modify Rain Fall Entry';
+			f.msg_line2 := 'Enter Rain Fall - F1 to SAVE or F2 to ROLLBACK';
+			f.state := state;
+			f.city := city;
+			f.year := year;
+
+			loop := 1;
+			loop2 := 0;
+
+			while loop = 1 do
+			begin
+
+				display f 
+					displaying *
+					cursor on m1
+					accepting m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12;
+
+
+				case f.TERMINATOR of
+					PYXIS__KEY_PF1:
+							loop := 0;
+					PYXIS__KEY_PF2:
+							begin
+								loop2 := 1;
+								loop := 0;
+							end;
+					OTHERWISE
+							f.msg_line2 := 'INVALID KEY - F1 to SAVE or F2 to ROLLBACK';
+				end;
+			end;
+			
+			(* if PF2 isn't pressed then update values in database *)
+
+			if loop2 <> 1 then
+			begin
+				(* update database using values in form *)
+			
+				for (TRANSACTION_HANDLE trans) c in cities with c.city = city and c.state = state
+					modify c using
+						c.rain_array[year,1] := f.m1;
+						c.rain_array[year,2] := f.m2;
+						c.rain_array[year,3] := f.m3;
+						c.rain_array[year,4] := f.m4;
+						c.rain_array[year,5] := f.m5;
+						c.rain_array[year,6] := f.m6;
+						c.rain_array[year,7] := f.m7;
+						c.rain_array[year,8] := f.m8;
+						c.rain_array[year,9] := f.m9;
+						c.rain_array[year,10] := f.m10;
+						c.rain_array[year,11] := f.m11;
+						c.rain_array[year,12] := f.m12;
+					end_modify;
+				end_for;
+			end;
+                        
+		end_form;
+
+		get_year (RAIN);
+	end;
+
+	COMMIT trans;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* modify temperature figures for a city and state         *)
+(* combination for 1973 - 1975                             *)
+(*                                                         *)
+(***********************************************************)
+procedure mod_temp;
+var
+	status,
+	i,
+	j,
+	loop, 
+	loop2 : integer;
+
+begin
+	loop := 1;
+	loop2 := 0;
+
+	trans := nil;
+
+	START_TRANSACTION trans;
+        
+	(* go and get a city & state to operate on *)
+
+	status := get_city_state;
+
+	if status = -1 then
+	begin
+		ROLLBACK trans;
+		return;
+	end;
+
+	(* loop on year to modify until EXIT is choosen *)
+                                
+	get_year (TEMP);
+	while year <> 0 do
+	begin
+
+		for form (TRANSACTION_HANDLE trans) f in arrays
+                     
+			for (TRANSACTION_HANDLE trans) first 1 c in cities with c.city = city and c.state = state
+
+				(* check and see if array had previously been populated *)
+				(* if not, set local array to all zero's                *) 
+				(* else copy in values from database to local array     *)
+
+				if c.temperature_array.NULL = GDS__FALSE then
+				begin
+					for i := 1 to 12 do
+					begin
+						temperature_array[i] := c.temperature_array[year,i];
+					end;
+				end 
+				else 
+				begin
+					for i := 1 to 12 do
+					begin
+						temperature_array[i] := 0;
+					end;
+				end;
+
+			end_for;
+
+			(* assign local array values to form fields *)
+
+			f.m1 := temperature_array [1];
+			f.m2 := temperature_array [2];
+			f.m3 := temperature_array [3];
+			f.m4 := temperature_array [4];
+			f.m5 := temperature_array [5];
+			f.m6 := temperature_array [6];
+			f.m7 := temperature_array [7];
+			f.m8 := temperature_array [8];
+			f.m9 := temperature_array [9];
+			f.m10 := temperature_array [10];
+			f.m11 := temperature_array [11];
+			f.m12 := temperature_array [12];
+	
+			f.msg_line1 := '          Store / Modify Temperatures Entry';
+			f.msg_line2 := 'Enter Temperatures - F1 to SAVE or F2 to ROLLBACK';
+			f.state := state;
+			f.city := city;
+			f.year := year;
+
+			loop := 1;
+			loop2 := 0;
+
+			while loop = 1 do
+			begin
+
+				display f 
+					displaying *
+					cursor on m1
+					accepting m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12;
+
+
+				case f.TERMINATOR of
+					PYXIS__KEY_PF1:
+							loop := 0;
+					PYXIS__KEY_PF2:
+							begin
+								loop2 := 1;
+								loop := 0;
+							end;
+					OTHERWISE
+							f.msg_line2 := 'INVALID KEY - F1 to SAVE or F2 to ROLLBACK';
+				end;
+			end;           
+			
+			(* if PF2 isn't pressed then update values in database *)
+
+			if loop2 <> 1 then
+			begin
+				(* update database using values in form *)
+			
+				for (TRANSACTION_HANDLE trans) c in cities with c.city = city and c.state = state
+					modify c using
+						c.temperature_array[year,1] := f.m1;
+						c.temperature_array[year,2] := f.m2;
+						c.temperature_array[year,3] := f.m3;
+						c.temperature_array[year,4] := f.m4;
+						c.temperature_array[year,5] := f.m5;
+						c.temperature_array[year,6] := f.m6;
+						c.temperature_array[year,7] := f.m7;
+						c.temperature_array[year,8] := f.m8;
+						c.temperature_array[year,9] := f.m9;
+						c.temperature_array[year,10] := f.m10;
+						c.temperature_array[year,11] := f.m11;
+						c.temperature_array[year,12] := f.m12;
+					end_modify;
+				end_for;
+			end;
+                        
+		end_form;
+
+		get_year (TEMP);
+	end;
+
+	COMMIT trans;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* function to total array for one year (index) and        *)
+(* return that to the caller.                              *)
+(*                                                         *)
+(***********************************************************)
+function tot_array (var array_1 : univ mult_array; index : integer) : double;
+var
+	i : integer;
+	accum : double;
+begin
+	accum := 0.0;
+
+	for i := 1 to 12 do
+		accum := accum + array_1[index,i];
+
+	tot_array := accum;
+end;
+(***********************************************************)
+(*                                                         *)
+(* function to total array for one year (index) and        *)
+(* return the average to the caller.                       *)
+(*                                                         *)
+(***********************************************************)
+function avg_array (var array_1 : univ mult_array; index : integer) : double;
+var
+	i : integer;
+	accum : double;
+begin
+
+	accum := 0.0;
+
+	for i := 1 to 12 do
+		accum := accum + array_1[index,i];
+
+	avg_array := accum / 12.0;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* function to total array for one month (index) and       *)
+(* return the average to the caller                        *)
+(*                                                         *)
+(***********************************************************)
+function avg_month (var array_1 : univ mult_array; index : integer) : double;
+var
+	i : integer;
+	accum : double;
+begin
+	accum := 0.0;
+
+	for i := 1973 to 1975 do
+		accum := accum + array_1[i,index];
+
+	avg_month := accum / 3.0;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* print a report for a city and state combination that    *)
+(* includes all the rain fall and temperature information  *)
+(* for 1973 through 1975.                                  *)
+(*                                                         *)
+(***********************************************************)
+procedure reports;
+const
+	under_string  = '                 -----  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----   ------  ------';
+	under_string2 = '                 -----  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----  -----';
+var
+	year,
+	i,
+	j,
+	loop,
+	loop2 : integer;
+	status : integer;
+	result : double;
+begin
+	loop := 1;
+	loop2 := 0;
+
+	trans := nil;
+
+	START_TRANSACTION trans;
+                            
+	(* go and get a city & state to operate on *)
+
+	status := get_city_state;
+
+	if status = -1 then
+	begin
+		return;
+	end;
+
+	for i := sizeof (city) downto 1 do
+		if city[i] <> ' ' then exit;
+		
+	for (TRANSACTION_HANDLE trans) first 1 c in cities with c.city = city and c.state = state
+
+		writeln;
+		writeln;
+		write ('                                        ');
+		writeln('Temperature and Rain Fall Report');
+		writeln;
+		writeln;
+		write ('                                                ');
+		writeln(city : i, ', ', state);
+		writeln;
+		writeln;
+
+		write ('        ');
+		write ('        ');
+		writeln ('  Jan    Feb    Mar    Apr    May    Jun    Jul    Aug    Sep    Oct    Nov    Dec    Total    Avg.');
+		write ('        ');
+		write ('        ');
+		writeln ('----------------------------------------------------------------------------------------------------');
+                          
+		writeln('Rain Fall');
+		for j := 1973 to 1975 do
+		begin
+			write ('        ');
+			write (j:4);
+			write ('     ');
+			write (	c.rain_array[j,1] : 5 : 2, '  ');
+			write (	c.rain_array[j,2] : 5 : 2, '  ');
+			write (	c.rain_array[j,3] : 5 : 2, '  ');
+			write (	c.rain_array[j,4] : 5 : 2, '  ');
+			write (	c.rain_array[j,5] : 5 : 2, '  ');
+			write (	c.rain_array[j,6] : 5 : 2, '  ');
+			write (	c.rain_array[j,7] : 5 : 2, '  ');
+			write (	c.rain_array[j,8] : 5 : 2, '  ');
+			write (	c.rain_array[j,9] : 5 : 2, '  ');
+			write (	c.rain_array[j,10] : 5 : 2, '  ');
+			write (	c.rain_array[j,11] : 5 : 2, '  ');
+			write (	c.rain_array[j,12] : 5 : 2, '  ');
+                        
+			result := tot_array(c.rain_array, j);
+			write (' ', result : 6 : 2);
+			result := avg_array(c.rain_array, j);
+			write ('  ', result : 6 : 2);
+			writeln;
+		end;
+		writeln (under_string);
+
+		for j := 1 to 12 do
+		begin
+			rain_array[j] := avg_month(c.rain_array, j);
+		end;
+
+		write ('        ');
+		write ('Avg      ');
+		write (	rain_array[1] : 5 : 2, '  ');
+		write (	rain_array[2] : 5 : 2, '  ');
+		write (	rain_array[3] : 5 : 2, '  ');
+		write (	rain_array[4] : 5 : 2, '  ');
+		write (	rain_array[5] : 5 : 2, '  ');
+		write (	rain_array[6] : 5 : 2, '  ');
+		write (	rain_array[7] : 5 : 2, '  ');
+		write (	rain_array[8] : 5 : 2, '  ');
+		write (	rain_array[9] : 5 : 2, '  ');
+		write (	rain_array[10] : 5 : 2, '  ');
+		write (	rain_array[11] : 5 : 2, '  ');
+		write (	rain_array[12] : 5 : 2, '  ');
+		writeln;
+
+		writeln;
+                                                
+		writeln('Temperatures');
+		for j := 1973 to 1975 do
+		begin
+			write ('        ');
+			write (j:4);
+			write ('     ');
+			write (	c.temperature_array[j,1] : 5 : 2, '  ');
+			write (	c.temperature_array[j,2] : 5 : 2, '  ');
+			write (	c.temperature_array[j,3] : 5 : 2, '  ');
+			write (	c.temperature_array[j,4] : 5 : 2, '  ');
+			write (	c.temperature_array[j,5] : 5 : 2, '  ');
+			write (	c.temperature_array[j,6] : 5 : 2, '  ');
+			write (	c.temperature_array[j,7] : 5 : 2, '  ');
+			write (	c.temperature_array[j,8] : 5 : 2, '  ');
+			write (	c.temperature_array[j,9] : 5 : 2, '  ');
+			write (	c.temperature_array[j,10] : 5 : 2, '  ');
+			write (	c.temperature_array[j,11] : 5 : 2, '  ');
+			write (	c.temperature_array[j,12] : 5 : 2, '  ');
+
+			result := tot_array(c.temperature_array, j);
+			write (' ', result : 6 : 2);
+			result := avg_array(c.temperature_array, j);
+			write ('  ', result : 6 : 2);
+			writeln;
+		end;
+		writeln (under_string);
+
+		for j := 1 to 12 do
+		begin
+			temperature_array[j] := avg_month(c.temperature_array, j);
+		end;
+
+		write ('        ');
+		write ('Avg      ');
+		write (	temperature_array[1] : 5 : 2, '  ');
+		write (	temperature_array[2] : 5 : 2, '  ');
+		write (	temperature_array[3] : 5 : 2, '  ');
+		write (	temperature_array[4] : 5 : 2, '  ');
+		write (	temperature_array[5] : 5 : 2, '  ');
+		write (	temperature_array[6] : 5 : 2, '  ');
+		write (	temperature_array[7] : 5 : 2, '  ');
+		write (	temperature_array[8] : 5 : 2, '  ');
+		write (	temperature_array[9] : 5 : 2, '  ');
+		write (	temperature_array[10] : 5 : 2, '  ');
+		write (	temperature_array[11] : 5 : 2, '  ');
+		write (	temperature_array[12] : 5 : 2, '  ');
+		writeln;
+
+		writeln;
+		writeln;
+
+	end_for;
+
+	COMMIT trans;
+
+end;
+(***********************************************************)
+(*                                                         *)
+(* M A I N    R O U T I N E                                *)
+(*                                                         *)
+(***********************************************************)
+begin
+	cont := 1;
+
+	ready;
+
+	start_transaction;
+
+        (* loop at main menu until EXIT is choosen *)
+
+	while (cont = 1) do
+	begin
+
+		case_menu "Array Demo - Pick an Operation"
+
+			menu_entree        "Store / Modify Temperatures" :
+				mod_temp();
+	
+			menu_entree        "Store / Modify Rain Fall" :
+				mod_rain();
+	
+			menu_entree        "Report" :
+				reports();
+	
+	       		menu_entree        "Exit"        :
+				cont := 0;
+		end_menu;
+
+	end;
+
+	commit;
+
+	finish;
+end.

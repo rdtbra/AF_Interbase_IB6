@@ -1,0 +1,154 @@
+# The contents of this file are subject to the Interbase Public
+# License Version 1.0 (the "License"); you may not use this file
+# except in compliance with the License. You may obtain a copy
+# of the License at http://www.Inprise.com/IPL.html
+#
+# Software distributed under the License is distributed on an
+# "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express
+# or implied. See the License for the specific language governing
+# rights and limitations under the License.
+#
+# The Original Code was created by Inprise Corporation
+# and its predecessors. Portions created by Inprise Corporation are
+# Copyright (C) Inprise Corporation.
+#
+# All Rights Reserved.
+# Contributor(s): ______________________________________.
+# make.cs	Build C-language example of converting character sets using
+#		InterBase UDF's designed for IMP shared libraries
+#  
+#
+#  To build the example:
+#	make -f make.cs new
+#	make -f make.cs install
+#	make -f make.cs demo
+#
+
+.SUFFIXES: .o .c .e .gdb .gdl
+.gdl.gdb:
+	$(GDEF)	$<
+.e.c:
+	$(GPRE) -e -n $<
+.c.o:
+	cc -c -O -DSHLIB_DEFS -DIMP $<
+
+
+# definitions
+#
+CFLAGS=		-g
+IBEXE=		$(INTERBASE)/bin
+INTERBASE=	/usr/interbase
+#
+GBAK=		$(IBEXE)/gbak -z
+GDEF=		$(IBEXE)/gdef -z
+GPRE=		$(IBEXE)/gpre -z
+QLI=		$(IBEXE)/qli
+EXAMPLES=	$(INTERBASE)/intl
+
+
+todo:	
+	echo First do "make -f make.cs new" > todo
+	echo Then  do "make -f make.cs install" >> todo
+	echo Then  do "make -f make.cs demo" >> todo
+
+
+new :
+	cp $(EXAMPLES)/shrcs.c .
+	cp $(EXAMPLES)/cs.bind .
+	cp $(EXAMPLES)/cs_funct.c ./functions.c
+	cp $(EXAMPLES)/cs_convert.c .
+	cp $(EXAMPLES)/437_to_865.h .
+	cp $(EXAMPLES)/437_to_lat1.h .
+	cp $(EXAMPLES)/865_to_lat1.h .
+	cp $(EXAMPLES)/products.lat1 .
+	cp $(EXAMPLES)/users.lat1 .
+	cp $(EXAMPLES)/clients.437 .
+	cp $(EXAMPLES)/contacts.437 .
+	cp $(EXAMPLES)/cs_load.gdl .
+	cp $(EXAMPLES)/cs_demo.gdl .
+	cp $(EXAMPLES)/cs_load.qli .
+	chmod 666 *.c *.gdl *.h *.437 *.lat1 *.qli
+
+funclib :	funclib.flag
+
+funclib.flag :	cs_convert.o functions.o shrcs.o cs.bind
+		mkshlib -s cs.bind -h gdsf_s.a -t gdsf_s -q
+		echo "shared function library created" > funclib.flag
+
+install.flag:	funclib.flag
+		@echo "Now you must modify the /usr/lib/libgdsf_s link to point"
+		@echo "to the new gdsf_s and modify the /usr/lib/libgdsf_s.a link"
+		@echo "to point to the new gdsf_s.a."
+		@echo "You can do this by:"
+		@echo "su root"
+		@echo "sh todo.com"
+		@echo "exit"
+		@echo "After moving the links, type 'make -f make.cs demo'"
+		@echo "After testing, be sure to undo the links with 'undo.com'."
+		@echo
+		@echo "#\!/bin/sh" >todo.com
+		@echo "CURDIR=`pwd`" >> todo.com
+		@echo 'mv /usr/lib/libgdsf_s /usr/lib/save_libgdsf_s'     >> todo.com
+		@echo 'mv /usr/lib/libgdsf_s.a /usr/lib/save_libgdsf_s.a' >> todo.com
+		@echo 'ln -s $$CURDIR/gdsf_s /usr/lib/libgdsf_s' >> todo.com
+		@echo 'ln -s $$CURDIR/gdsf_s.a /usr/lib/libgdsf_s.a' >> todo.com
+		@echo 'touch $$CURDIR/install.flag' >> todo.com
+		@echo 'chmod 777 $$CURDIR/install.flag' >> todo.com
+		@chmod 777 todo.com
+		@echo "#\!/bin/sh" >undo.com
+		@echo 'mv -f /usr/lib/save_libgdsf_s /usr/lib/libgdsf_s'     >> undo.com
+		@echo 'mv -f /usr/lib/save_libgdsf_s.a /usr/lib/libgdsf_s.a' >> undo.com
+		@chmod 777 undo.com
+
+install:	install.flag
+
+functions.o :	functions.c
+shrcs.o :	shrcs.c
+
+functions.c shrcs.c cs.bind :
+		@echo "    TYPE: make -f make.cs new"
+		@echo "    to copy necessary files from $(EXAMPLES)"
+
+qli :
+	cc $(INTERBASE)/lib/qlilib.a -lgds_s -lgdsf_s -lgds_pyxis -o qli
+
+gbak :
+	cc $(INTERBASE)/lib/gbaklib.a -lgds_s -lgdsf_s -o gbak
+
+gds_inet_server :
+	cc $(INTERBASE)/lib/gds_inet_server.a -lgds_s -lgdsf_s -o gds_inet_server
+
+
+cs_convert.o:	cs_convert.c 437_to_865.h 437_to_lat1.h 865_to_lat1.h
+
+
+demo:	cs_demo.gdb
+
+cs_demo.gdb:	funclib.flag install.flag
+	sed -e s:CONVERT_MODULE:convert.o:g cs_demo.gdl | $(GDEF)
+	$(GDEF) cs_load.gdl
+	$(QLI) -a cs_load.qli
+
+clean:
+	-rm shrcs.c 
+	-rm cs.bind
+	-rm functions.c
+	-rm todo
+	-rm cs_convert.c
+	-rm 437_to_865.h 
+	-rm 437_to_lat1.h 
+	-rm 865_to_lat1.h 
+	-rm cs_demo.gdl cs_demo.gdb
+	-rm cs_load.gdl cs_load.gdb cs_load.qli
+	-rm users.lat1 products.lat1
+	-rm clients.437 contacts.437
+	-rm funclib.flag
+	-rm install.flag
+	-rm gdsf_s
+	-rm gdsf_s.a
+	-rm todo.com
+	-rm functions.o
+	-rm cs_convert.o
+	-rm shrcs.o
+	@echo "Run undo.com as root to reset the InterBase shared library links."
+
