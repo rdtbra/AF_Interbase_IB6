@@ -1,6 +1,6 @@
 /*
  *	PROGRAM:	JRD Access Method
- *	MODULE:		vio.c teste
+ *	MODULE:		vio.c
  *	DESCRIPTION:	Virtual IO
  *
  * The contents of this file are subject to the Interbase Public
