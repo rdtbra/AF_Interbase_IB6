@@ -73,8 +73,8 @@ void CNTL_init (
  *
  **************************************/
 
-	main_handler = handler;
-	service_name = name;
+main_handler = handler;
+service_name = name;
 }
 
 void *CNTL_insert_thread (void)

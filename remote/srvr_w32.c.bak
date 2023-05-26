@@ -354,14 +354,14 @@ static void THREAD_ROUTINE ipc_connect_wait_thread (
  * Functional description
  *
  **************************************/
-  void       *thread;
+void       *thread;
 
-  if (!(server_flag & SRVR_non_service))
+if (!(server_flag & SRVR_non_service))
     thread = CNTL_insert_thread();
 
-  WINDOW_main(hInst, SW_NORMAL, server_flag);
+WINDOW_main(hInst, SW_NORMAL, server_flag);
 
-  if (!(server_flag & SRVR_non_service))
+if (!(server_flag & SRVR_non_service))
     CNTL_remove_thread (thread);
 }
 
