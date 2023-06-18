@@ -156,6 +156,9 @@ return enabled;
 
 void API_ROUTINE gds__thread_enter (void)
 {
+/* RDT: 20230618 - Pelo que vi esta função é chamada quando não temos SUPERSERVER definido. 
+   Porém, no geral ela chamará SCH_enter também. O contexto pode ser diferente. Aos poucos
+   vamos entender, creio */
 /**************************************
  *
  *	g d s _ $ t h r e a d _ e n t e r
@@ -167,7 +170,7 @@ void API_ROUTINE gds__thread_enter (void)
  *
  **************************************/
 
-SCH_enter();
+  SCH_enter();
 }
 
 void API_ROUTINE gds__thread_exit (void)
