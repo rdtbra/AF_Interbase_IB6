@@ -117,12 +117,13 @@ static DWORD		t_key;
 #endif
 
 int API_ROUTINE gds__thread_start (
-    int		(*entrypoint)(void *),
-    void	*arg,
-    int		priority,
-    int		flags,
-    void	*thd_id)
+  int	(*entrypoint)(void *),
+  void	*arg,
+  int	priority,
+  int	flags,
+  void	*thd_id)
 {
+/* RDT: 20230618 - Iniciar uma thread, chamando thread_start. */
 /**************************************
  *
  *	g d s _ $ t h r e a d _ s t a r t
@@ -133,8 +134,7 @@ int API_ROUTINE gds__thread_start (
  *	Start a thread.
  *
  **************************************/
-
-return thread_start (entrypoint, arg, priority, flags, thd_id);
+  return thread_start (entrypoint, arg, priority, flags, thd_id);
 }
 
 long THD_get_thread_id (void)
@@ -2737,12 +2737,13 @@ return rval;
 #ifdef WIN_NT
 #define START_THREAD
 static int thread_start (
-    int		(*routine)(void *),
-    void	*arg,
-    int		priority_arg,
-    int		flags,
-    void	*thd_id)
+  int  (*routine)(void *),
+  void *arg,
+  int  priority_arg,
+  int  flags,
+  void *thd_id)
 {
+/* RDT: 20230618 - Iniciar uma thread no ambiente do Windows NT. */
 /**************************************
  *
  *	t h r e a d _ s t a r t		( W I N _ N T )
@@ -2754,55 +2755,55 @@ static int thread_start (
  *	status if not.
  *
  **************************************/
-HANDLE	handle;
-DWORD	create, thread_id;
-int	priority;
+  HANDLE handle;
+  DWORD  create, thread_id;
+  int    priority;
 
-create = (flags & THREAD_wait) ? CREATE_SUSPENDED : 0;
+  create = (flags & THREAD_wait) ? CREATE_SUSPENDED : 0;
 
+/* RDT: 20230618 - Uma indicação de que este produto compilava com o Borland C++ ou Visual C++ (ao menos). */
 #ifdef __BORLANDC__
-if ((handle = (HANDLE) _beginthreadNT ((void (_USERENTRY *) (void *)) routine, 0, arg,
-	NULL, create, &thread_id)) == (HANDLE) -1)
-    return errno;
+  if ((handle = (HANDLE) _beginthreadNT ((void (_USERENTRY *) (void *)) routine, 0, arg,
+    NULL, create, &thread_id)) == (HANDLE) -1)
+  return errno;
 #else
-/* I have changed the CreateThread here to _beginthreadex() as using
- * CreateThread() can lead to memory leaks caused by C-runtime library.
- * Advanced Windows by Richter pg. # 109. */
-if (!(handle = _beginthreadex (NULL, 0,
-	(LPTHREAD_START_ROUTINE) routine, (LPVOID) arg, create, &thread_id)))
+  /* I have changed the CreateThread here to _beginthreadex() as using
+   * CreateThread() can lead to memory leaks caused by C-runtime library.
+   * Advanced Windows by Richter pg. # 109. :) :) :) */
+  if (!(handle = _beginthreadex (NULL, 0,
+     (LPTHREAD_START_ROUTINE) routine, (LPVOID) arg, create, &thread_id)))
     return GetLastError();
 #endif
 
-switch (priority_arg)
-    {
+  switch (priority_arg)
+  {
     case THREAD_critical:
-	priority = THREAD_PRIORITY_TIME_CRITICAL;
-	break;
+      priority = THREAD_PRIORITY_TIME_CRITICAL;
+      break;
     case THREAD_high:
-	priority = THREAD_PRIORITY_HIGHEST;
-	break;
+      priority = THREAD_PRIORITY_HIGHEST;
+      break;
     case THREAD_medium_high:
-	priority = THREAD_PRIORITY_ABOVE_NORMAL;
-	break;
+      priority = THREAD_PRIORITY_ABOVE_NORMAL;
+      break;
     case THREAD_medium:
-	priority = THREAD_PRIORITY_NORMAL;
-	break;
+      priority = THREAD_PRIORITY_NORMAL;
+      break;
     case THREAD_medium_low:
-	priority = THREAD_PRIORITY_BELOW_NORMAL;
-	break;
+      priority = THREAD_PRIORITY_BELOW_NORMAL;
+      break;
     case THREAD_low:
     default:
-	priority = THREAD_PRIORITY_LOWEST;
-	break;
-    }
-
-SetThreadPriority (handle, priority);
-if ( thd_id)
+      priority = THREAD_PRIORITY_LOWEST;
+      break;
+  }
+  SetThreadPriority (handle, priority);
+  if ( thd_id)
     *(HANDLE*)thd_id = handle;
-else
+  else
     CloseHandle (handle);
 
-return 0;
+  return 0;
 }
 #endif
 #endif
