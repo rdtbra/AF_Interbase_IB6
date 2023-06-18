@@ -393,6 +393,8 @@ return active_thread;
 
 void SCH_enter (void)
 {
+/* RDT: 20230618 - Este parece ser o ponto onde o scheduler interno de threads é
+   iniciado. */	
 /**************************************
  *
  *	S C H _ e n t e r
@@ -404,66 +406,65 @@ void SCH_enter (void)
  *	Humor him.
  *
  **************************************/
-THREAD	thread, prior;
-int	mutex_state;
+  THREAD thread, prior;
+  int    mutex_state;
 
 #ifdef NeXT
-return;
+  return;
 #endif
 
-/* Special case single thread case */
-
-if (!multi_threaded)
-    {
+  /* Special case single thread case */
+  if (!multi_threaded)
+  {
     if (active_thread || ast_thread)
-	multi_threaded = TRUE;
+      multi_threaded = TRUE;
     else
-	if (free_threads)
-	    {
-	    thread = active_thread = free_threads;
-	    free_threads = NULL;
-	    thread->thread_next = thread->thread_prior = thread;
-	    thread->thread_flags = 0;
-	    thread->thread_id = THD_get_thread_id();
-	    return;
-	    }
-    }
+      if (free_threads)
+      {
+        thread = active_thread = free_threads;
+	free_threads = NULL;
+	thread->thread_next = thread->thread_prior = thread;
+	thread->thread_flags = 0;
+	thread->thread_id = THD_get_thread_id();
+	return;
+      }
+  }
 
-if (!init_flag)
+  if (!init_flag)
     SCH_init();
 
-/* Get mutex on scheduler data structures to prevent tragic misunderstandings */
-
-if (mutex_state = THD_mutex_lock (thread_mutex))
+  /* Get mutex on scheduler data structures to prevent tragic misunderstandings */
+  if (mutex_state = THD_mutex_lock (thread_mutex))
     mutex_bugcheck ("mutex lock", mutex_state);
 
-thread = alloc_thread();
-thread->thread_id = THD_get_thread_id();
+  thread = alloc_thread();
+  thread->thread_id = THD_get_thread_id();
 
-/* Link thread block into circular list of active threads */
-
-if (active_thread)
-    {
+  /* Link thread block into circular list of active threads */
+  if (active_thread)
+  {
     /* The calling thread should NOT be the active_thread 
        This is to prevent deadlock by the same thread */
     assert (thread->thread_id != active_thread->thread_id);
-
     thread->thread_next = active_thread;
     thread->thread_prior = prior = active_thread->thread_prior;
     active_thread->thread_prior = thread;
     prior->thread_next = thread;
-    }
-else
-    {
+  }
+  else
+  {
     thread->thread_next = thread->thread_prior = thread;
     active_thread = thread;
-    }
+  }
 
-if (active_thread->thread_flags & THREAD_hiber)
+  if (active_thread->thread_flags & THREAD_hiber)
+    /* RDT: 20230618 - Deve executar a thread. */
     schedule();
 
-stall (thread);
-if (mutex_state = THD_mutex_unlock (thread_mutex))
+  /* RDT: 20230618 - Em seguida parece que vai parar a execução da thread, mas preciso estudar os dois mecanismos. */ 
+  stall (thread);
+	
+  if (mutex_state = THD_mutex_unlock (thread_mutex))
     mutex_bugcheck ("mutex unlock", mutex_state);
 }
 
