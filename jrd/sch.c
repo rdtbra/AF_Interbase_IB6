@@ -903,6 +903,9 @@ ABORT;
 
 static BOOLEAN schedule (void)
 {
+/* RDT: 20230618 - E esta parece ser a função que irá disparar o scheduler. Na verdade ela vai circular a lista de threads 
+   procurando pela próxima thread a ativar. Isso me dá idéia de que o interbase usa threads do so, mesmo que esteja 
+   controlando a execução das threads via sistema operacional. */
 /**************************************
  *
  *	s c h e d u l e
@@ -915,36 +918,42 @@ static BOOLEAN schedule (void)
  *	return FALSE.
  *
  **************************************/
-THREAD	thread;
+  THREAD thread;
 
 #ifdef NETWARE_386
-/* Be a good citizen, yield CPU periodically */
-yield_count++;
-if (yield_count > YIELD_LIMIT)
-    {
+  /* Be a good citizen, yield CPU periodically */
+  yield_count++;
+  if (yield_count > YIELD_LIMIT)
+  {
     yield_count = 0;
     ThreadSwitch();
-    }
+  }
 #endif
 
-if (!active_thread)
+  if (!active_thread)
     return FALSE;
 
-thread = active_thread;
+  thread = active_thread;
 
-for (;;)
-    {
+  /* RDT: 20230618 - Este loop percorre a lista de threads verificando, a partir da thread atual, 
+     qual a próxima que dever ser selecionada. */
+  for (;;)
+  {
     thread = thread->thread_next;
+    /* RDT: 20230618 - Caso a thread não tenha flag THREAD_hiber, será selecionada */
     if (!(thread->thread_flags & THREAD_hiber))
-	break;
+      break;
     if (thread == active_thread)
-	return FALSE;
-    }
+      return FALSE;
+  }
 
-active_thread = thread;
-ISC_event_post (active_thread->thread_stall);
+  /* RDT: 20230618 - A thread se tornará a thread ativa. */
+  active_thread = thread;
+  /* RDT: 20230618 - Talvez aqui esteja parte da resposta de como funciona o verdadeiro scheduler! 
+     ISC - deve ser Interbase Signal Controler. */
+  ISC_event_post (active_thread->thread_stall);
 
-return TRUE;
+  return TRUE;
 }
 
 static BOOLEAN schedule_active (
