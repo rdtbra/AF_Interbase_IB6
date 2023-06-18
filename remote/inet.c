@@ -1053,13 +1053,15 @@ return port;
 }
 
 PORT DLL_EXPORT INET_connect (
-    TEXT	*name,
-    PACKET	*packet,
-    STATUS	*status_vector,
-    USHORT	flag,
-    SCHAR       *dpb, 
-    SSHORT      dpb_length)
+  TEXT    *name,
+  PACKET  *packet,
+  STATUS  *status_vector,
+  USHORT  flag,
+  SCHAR   *dpb, 
+  SSHORT  dpb_length)
 {
+/* RDT: 20230616 - Esta função é chamada a partir de WinMain, no ambiente Windows. 
+   A descrição abaixo, dá uma idéia do que ela faz. */    
 /**************************************
  *
  *	I N E T _ c o n n e c t
@@ -1072,208 +1074,205 @@ PORT DLL_EXPORT INET_connect (
  *	is for a server process.
  *
  **************************************/
-int			l, n;
-SOCKET 			s;
-PORT			port;
-TEXT			*protocol, temp [128], *p;
-struct sockaddr_in	address;
+  int l, n;
+  SOCKET 			s;
+  PORT			port;
+  TEXT			*protocol, temp [128], *p;
+  struct sockaddr_in	address;
 #ifndef VMS
-struct hostent		*host;
-struct servent		*service;
-TEXT			msg [64];
+  struct hostent		*host;
+  struct servent		*service;
+  TEXT			msg [64];
 #endif
 #ifdef DGUX
-SCHAR			optval;
+  SCHAR			optval;
 #else
-int			optval;
+  int			optval;
 #endif
  
 #ifdef DEBUG
-{
-UCHAR	*p;
-if (INET_trace & TRACE_operations)
+  {
+    UCHAR	*p;
+    if (INET_trace & TRACE_operations)
     {
-    ib_fprintf (ib_stdout,"INET_connect\n");
-    ib_fflush (ib_stdout);
+      ib_fprintf (ib_stdout,"INET_connect\n");
+      ib_fflush (ib_stdout);
     };
-INET_start_time = inet_debug_timer();
-if ((p = getenv ("INET_force_error")) != NULL) 
-    INET_force_error = atoi (p);
-}
+    INET_start_time = inet_debug_timer();
+    if ((p = getenv ("INET_force_error")) != NULL) 
+      INET_force_error = atoi (p);
+  }
 #endif
 
-port = alloc_port (NULL_PTR);
-port->port_status_vector = status_vector;
-REMOTE_get_timeout_params (port, dpb, dpb_length);
-status_vector [0] = gds_arg_gds;
-status_vector [1] = 0;
-status_vector [2] = gds_arg_end;
-protocol = PROTOCOL_NAME;
+  port = alloc_port (NULL_PTR);
+  port->port_status_vector = status_vector;
+  REMOTE_get_timeout_params (port, dpb, dpb_length);
+  status_vector [0] = gds_arg_gds;
+  status_vector [1] = 0;
+  status_vector [2] = gds_arg_end;
+  protocol = PROTOCOL_NAME;
 #ifdef VMS
-ISC_tcp_setup (ISC_wait, gds__completion_ast);
+  ISC_tcp_setup (ISC_wait, gds__completion_ast);
 #endif
 
-if (name)
-    {
+  if (name)
+  {
     strcpy (temp, name);
     for (p = temp; *p;)
-	if (*p++ == '/')
-	    {
+	  if (*p++ == '/')
+	  {
 	    p [-1] = 0;
 	    name = temp;
 	    protocol = p;
 	    break;
-	    }
-    }
+	  }
+  }
 
-if (name && *name)
-    {
+  if (name && *name)
+  {
     if (port->port_connection)
-	ALLR_free (port->port_connection);
+  	  ALLR_free (port->port_connection);
     port->port_connection = REMOTE_make_string (name);
-    }
-else
+  }
+  else
     name = port->port_host->str_data;
 
-/* Set up Inter-Net socket address */
-
-inet_zero ((SCHAR*) &address, sizeof (address));
+  /* Set up Inter-Net socket address */
+  inet_zero ((SCHAR*) &address, sizeof (address));
 
 /* V M S */
-
 #ifdef VMS
-if (getservport (protocol, "tcp", &address.sin_port) == -1)
-    {
+  if (getservport (protocol, "tcp", &address.sin_port) == -1)
+  {
     inet_error (port, "getservbyname", isc_net_connect_err, 0);
     return NULL;
-    }
-if (packet)
-    {
+  }
+  if (packet)
+  {
     if (getaddr (name, &address) == -1)
 	{
-	inet_error (port, "gethostbyname", isc_net_connect_err, 0);
-	return NULL;
+	  inet_error (port, "gethostbyname", isc_net_connect_err, 0);
+	  return NULL;
 	}
-    }
-else
+  }
+  else
     address.sin_addr.s_addr = INADDR_ANY;
 #else
-
 #ifdef WINDOWS_ONLY
-if (initWSA(port))
+  if (initWSA(port))
     return NULL;
 #endif  /* WINDOWS_ONLY */
 
 /* U N I X style sockets */
-THREAD_EXIT;
-host = GETHOSTBYNAME (name);
+  THREAD_EXIT;
+  host = GETHOSTBYNAME (name);
 
-/* On Windows NT/9x, gethostbyname can only accomodate
- * 1 call at a time.  In this case it returns the error
- * WSAEINPROGRESS. On UNIX systems, this call may not succeed
- * because of a temporary error.  In this case, it returns
- * h_error set to TRY_AGAIN.  When these errors occur,
- * retry the operation a few times.
- * NOTE: This still does not guarantee success, but helps.
- */
-if (!host)
-    {
+  /* On Windows NT/9x, gethostbyname can only accomodate
+   * 1 call at a time.  In this case it returns the error
+   * WSAEINPROGRESS. On UNIX systems, this call may not succeed
+   * because of a temporary error.  In this case, it returns
+   * h_error set to TRY_AGAIN.  When these errors occur,
+   * retry the operation a few times.
+   * NOTE: This still does not guarantee success, but helps.
+  */
+  if (!host)
+  {
     int retry;
     if (H_ERRNO == INET_RETRY_ERRNO)
-        {
-        for (retry = 0; retry < INET_RETRY_CALL; retry++)
-            {
+    {
+      for (retry = 0; retry < INET_RETRY_CALL; retry++)
+      {
 	    host = GETHOSTBYNAME (name);
 	    if (host) break;
-            }
+      }
 	}
-    }
-THREAD_ENTER;
-if (!host)
-    {
+  }
+  THREAD_ENTER;
+  if (!host)
+  {
     sprintf (msg, 
 	      "INET/INET_connect: gethostbyname failed, error code = %d", 
 	      H_ERRNO);
     gds__log (msg, NULL_PTR);
     inet_gen_error (port,
-            isc_network_error,
-		    isc_arg_string, 
-		    port->port_connection->str_data, 
-		    isc_arg_gds, 
-		    isc_net_lookup_err,
-            isc_arg_gds,
-		    isc_host_unknown, 
-		    0);
+      isc_network_error,
+	  isc_arg_string, 
+	  port->port_connection->str_data, 
+	  isc_arg_gds, 
+	  isc_net_lookup_err,
+      isc_arg_gds,
+	  isc_host_unknown, 
+	  0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	
     return NULL;
-    }
+  }
 
-/* Copy info from host struct before making another socket call for
-   Winsock compatibility */
+  /* Copy info from host struct before making another socket call for
+     Winsock compatibility */
 
-address.sin_family = host->h_addrtype;
-if (packet)
+  address.sin_family = host->h_addrtype;
+  if (packet)
     inet_copy (host->h_addr, &address.sin_addr, sizeof (address.sin_addr));
-else
+  else
     address.sin_addr.s_addr = INADDR_ANY;
 
-THREAD_EXIT;
-service = GETSERVBYNAME (protocol, "tcp");
+  THREAD_EXIT;
+  service = GETSERVBYNAME (protocol, "tcp");
 #ifdef WIN_NT
-/* On Windows NT/9x, getservbyname can only accomodate
- * 1 call at a time.  In this case it returns the error
- * WSAEINPROGRESS. 
- * If this happens, retry the operation a few times.
- * NOTE: This still does not guarantee success, but helps.
- */
- if (!service)
-    {
+  /* On Windows NT/9x, getservbyname can only accomodate
+   * 1 call at a time.  In this case it returns the error
+   * WSAEINPROGRESS. 
+   * If this happens, retry the operation a few times.
+   * NOTE: This still does not guarantee success, but helps.
+   */
+  if (!service)
+  {
     int retry;
     if (H_ERRNO == INET_RETRY_ERRNO)
-        {
-        for (retry = 0; retry < INET_RETRY_CALL; retry++)
-            {
-	    service = GETSERVBYNAME (protocol, "tcp");
-    	    if (service) break;
-            }
-    	}
-    }
-#endif /* WIN_NT */
-THREAD_ENTER;
-if (!service)
     {
+      for (retry = 0; retry < INET_RETRY_CALL; retry++)
+      {
+	    service = GETSERVBYNAME (protocol, "tcp");
+  	    if (service) break;
+      }
+   	}
+  }
+#endif /* WIN_NT */
+  THREAD_ENTER;
+  if (!service)
+  {
     sprintf (msg, 
-	      "INET/INET_connect: getservbyname failed, error code = %d", 
-	      H_ERRNO);
+      "INET/INET_connect: getservbyname failed, error code = %d", 
+      H_ERRNO);
     gds__log (msg, NULL_PTR);
     inet_gen_error (port, 
-            isc_network_error,
-		    isc_arg_string, 
-		    port->port_connection->str_data, 
-		    isc_arg_gds,
-		    isc_net_lookup_err, 
-		    isc_arg_gds, 
-		    isc_service_unknown,
- 		    isc_arg_string, 
-		    protocol,
-		    isc_arg_string, 
-		    "tcp", 
-		    0);
+      isc_network_error,
+      isc_arg_string, 
+	  port->port_connection->str_data, 
+	  isc_arg_gds,
+	  isc_net_lookup_err, 
+	  isc_arg_gds, 
+	  isc_service_unknown,
+ 	  isc_arg_string, 
+	  protocol,
+	  isc_arg_string, 
+	  "tcp", 
+	  0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	 
-   return NULL;
-    }
+    return NULL;
+  }
 
 #ifdef NETWARE_386
 /* LATER, bug in NOVELL getservbyname() */
 
-service->s_port = 3050;
-address.sin_port = htons (service->s_port);
+  service->s_port = 3050;
+  address.sin_port = htons (service->s_port);
 #else
-address.sin_port = service->s_port;
+  address.sin_port = service->s_port;
 #endif
 
 #endif  /* VMS */
@@ -1281,42 +1280,40 @@ address.sin_port = service->s_port;
 /* Allocate a port block and initialize a socket for communications */
 
 #ifdef APOLLO
-port->port_handle = (int*) socket (AF_INET, SOCK_STREAM, SO_REUSEADDR);
+  port->port_handle = (int*) socket (AF_INET, SOCK_STREAM, SO_REUSEADDR);
 #else
-port->port_handle = (HANDLE) socket (AF_INET, SOCK_STREAM, 0);
+  port->port_handle = (HANDLE) socket (AF_INET, SOCK_STREAM, 0);
 #endif
 
-if ((SOCKET) port->port_handle == INVALID_SOCKET)
-    {
+  if ((SOCKET) port->port_handle == INVALID_SOCKET)
+  {
     inet_error (port, "socket", isc_net_connect_err, ERRNO);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	
     return NULL;
-    }
+  }
 
-/* If we're a host, just make the connection */
-
-if (packet)
-    {
+  /* If we're a host, just make the connection */
+  if (packet)
+  {
     THREAD_EXIT;
     n = connect ((SOCKET) port->port_handle, 
-		 (struct sockaddr *) &address, sizeof (address));
+ 	  (struct sockaddr *) &address, sizeof (address));
     THREAD_ENTER;
     if (n != -1 && send_full (port, packet))
-       	return port;
+      return port;
     else
 	{
-	inet_error (port, "connect", isc_net_connect_err, ERRNO);
-	disconnect (port);
-	return NULL;
+	  inet_error (port, "connect", isc_net_connect_err, ERRNO);
+	  disconnect (port);
+	  return NULL;
 	}
-    }
+  }
 
-/* We're a server, so wait for a host to show up */
-
-if (flag & SRVR_multi_client)
-    {
+  /* We're a server, so wait for a host to show up */
+  if (flag & SRVR_multi_client)
+  {
     int optlen;
     struct linger lingerInfo;
 
@@ -1325,77 +1322,76 @@ if (flag & SRVR_multi_client)
 
     optval = TRUE;
     n = setsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_REUSEADDR,
-		    (SCHAR*) &optval, sizeof (optval));
+      (SCHAR*) &optval, sizeof (optval));
+
     if (n == -1)
-        {
-        inet_error (port, "setsockopt REUSE", isc_net_connect_listen_err, ERRNO);
-        disconnect (port);
-        return NULL;
-        }
+    {
+      inet_error (port, "setsockopt REUSE", isc_net_connect_listen_err, ERRNO);
+      disconnect (port);
+      return NULL;
+    }
     
     /* Get any values for SO_LINGER so that they can be reset during
      * disconnect.  SO_LINGER should be set by default on the socket
      */
     optlen = sizeof (port->port_linger);
     n = getsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_LINGER,
-                    (SCHAR*) &port->port_linger, &optlen);
+      (SCHAR*) &port->port_linger, &optlen);
 
     if (n != 0) /* getsockopt failed */
-        port->port_linger.l_onoff = 0;
+      port->port_linger.l_onoff = 0;
 
     n = setsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_LINGER,
-                    (SCHAR*) &lingerInfo, sizeof (lingerInfo));
+      (SCHAR*) &lingerInfo, sizeof (lingerInfo));
     if (n == -1)
-        {
-    	inet_error (port, "setsockopt LINGER", isc_net_connect_listen_err, ERRNO);
-        disconnect (port);
-        return NULL;
-        }
-    }
-
-n = bind ((SOCKET) port->port_handle, 
-	  (struct sockaddr *) &address, sizeof (address));
-
-if (n == -1)
     {
+      inet_error (port, "setsockopt LINGER", isc_net_connect_listen_err, ERRNO);
+      disconnect (port);
+      return NULL;
+    }
+  }
+
+  n = bind ((SOCKET) port->port_handle, 
+    (struct sockaddr *) &address, sizeof (address));
+
+  if (n == -1)
+  {
     inet_error (port, "bind", isc_net_connect_listen_err, ERRNO);
     disconnect (port);
     return NULL;
-    }
+  }
 
-n = listen ((SOCKET) port->port_handle, 5);
+  n = listen ((SOCKET) port->port_handle, 5);
 
-if (n == -1)
-    {
+  if (n == -1)
+  {
     inet_error (port, "listen", isc_net_connect_listen_err, ERRNO);
     return NULL;
-    }
+  }
 
-if (flag & SRVR_multi_client)
-    {
+  if (flag & SRVR_multi_client)
+  {
     /* Prevent the generation of dummy keepalive packets on the
        connect port. */
-
     port->port_dummy_packet_interval = 0;
     port->port_dummy_timeout = 0;
     port->port_server_flags |= (SRVR_server | SRVR_multi_client);
     gds__register_cleanup (exit_handler, (void*) port);
     return port;
-    }
+  }
 
-
-while (TRUE)
-    {
+  while (TRUE)
+  {
     THREAD_EXIT;
     l = sizeof (address);
     s = accept ((SOCKET) port->port_handle, 
-		(struct sockaddr *) &address, &l);
+  	  (struct sockaddr *) &address, &l);
     if (s == INVALID_SOCKET)
 	{
-	THREAD_ENTER;
-	inet_error (port, "accept", isc_net_connect_err, ERRNO);
-	disconnect (port);
-	return NULL;
+	  THREAD_ENTER;
+	  inet_error (port, "accept", isc_net_connect_err, ERRNO);
+	  disconnect (port);
+	  return NULL;
 	}
 #ifdef WIN_NT
     if ((flag & SRVR_debug) || !fork (s, flag))
@@ -1403,15 +1399,15 @@ while (TRUE)
     if ((flag & SRVR_debug) || !fork())
 #endif
 	{
-	THREAD_ENTER;
-	SOCLOSE ((SOCKET) port->port_handle);
-	port->port_handle = (HANDLE) s;
-	port->port_server_flags |= SRVR_server;
-	return port;
+	  THREAD_ENTER;
+	  SOCLOSE ((SOCKET) port->port_handle);
+	  port->port_handle = (HANDLE) s;
+	  port->port_server_flags |= SRVR_server;
+	  return port;
 	}
     THREAD_ENTER;
     SOCLOSE (s);
-    }
+  }
 }
 
 PORT INET_reconnect (
