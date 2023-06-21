@@ -1008,8 +1008,11 @@ return ret;
 }
 
 static void stall (
-    THREAD	thread)
+  THREAD thread)
 {
+/* RDT: 20230620 - stall é parar! em português. A ideia aqui é que a thread entre em um loop,
+   esperando para se tornar a thread ativa, e, neste momento o loop é interrompido. ast_disable
+   é executado, neste momento, mas não vou me preocupar com esta chamada agora. */
 /**************************************
  *
  *	s t a l l
@@ -1020,29 +1023,40 @@ static void stall (
  *	Stall until our thread is made active.
  *
  **************************************/
-SLONG	value;
-EVENT	ptr;
-int	mutex_state;
+  SLONG value;
+  EVENT ptr;
+  int   mutex_state;
 
-if (thread != active_thread || thread->thread_flags & THREAD_hiber ||
-    (ast_thread && ast_thread->thread_flags & THREAD_ast_active))
+  if (thread != active_thread || thread->thread_flags & THREAD_hiber ||
+     (ast_thread && ast_thread->thread_flags & THREAD_ast_active))
     for (;;)
-	{
-	value = ISC_event_clear (thread->thread_stall);
-	if (thread == active_thread && !(thread->thread_flags & THREAD_hiber) &&
-	    (!ast_thread || !(ast_thread->thread_flags & THREAD_ast_active)))
-	    break;
-	if (mutex_state = THD_mutex_unlock (thread_mutex))
-	    mutex_bugcheck ("mutex unlock", mutex_state);
-	ptr = thread->thread_stall;
-	ISC_event_wait (1, &ptr, &value, 0, NULL_PTR, NULL_PTR);
-	if (mutex_state = THD_mutex_lock (thread_mutex))
-	    mutex_bugcheck ("mutex lock", mutex_state);
-	}
+    {
+      /* RDT: 20230620 - Limpar o evento, já que vamos sinalizá-lo novamente logo abaixo. */
+      value = ISC_event_clear (thread->thread_stall);
 
-/* Explicitly disable AST delivery for active thread */
+      /* RDT: 20230620 - Aguardar até o momento em que esta thread se torne a thread ativa. 
+         Isto deve ocorrer por alguma outra thread executando a função SCH_enter + schedule, 
+	 que vimos que percorrerá a lista circular de threads, tornando alguma ativa. Quando 
+         esta thread for a ativa, saímos do loop. */
+      if (thread == active_thread && !(thread->thread_flags & THREAD_hiber) &&
+         (!ast_thread || !(ast_thread->thread_flags & THREAD_ast_active)))
+        break;
 
-ast_disable();
+      /* RDT: 20230620 - Esta thread não é a ativa no contexto do Interbase, então, ela 
+         vai entrar em estado de espera novamente, chamando ISC_event_wait abaixo. */
+      if (mutex_state = THD_mutex_unlock (thread_mutex))
+          mutex_bugcheck ("mutex unlock", mutex_state);
+        ptr = thread->thread_stall;
+	    
+      /* RDT: 20230620 - A thread vai entrar em estado de espera novamente. Esta claro que é 
+         uma estratégia de um scheduler 'distribuído'. */
+      ISC_event_wait (1, &ptr, &value, 0, NULL_PTR, NULL_PTR);
+      if (mutex_state = THD_mutex_lock (thread_mutex))
+        mutex_bugcheck ("mutex lock", mutex_state);
+    }
+
+  /* Explicitly disable AST delivery for active thread */
+  ast_disable();
 }
 
 static void stall_ast (
