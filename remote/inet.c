@@ -1060,7 +1060,7 @@ PORT DLL_EXPORT INET_connect (
   SCHAR   *dpb, 
   SSHORT  dpb_length)
 {
-/* RDT: 20230616 - Esta função é chamada a partir de WinMain, no ambiente Windows. 
+/* RDT: 20230616 - Esta função é chamada a partir de inet_connect_wait_thread (WinMain), no ambiente Windows. 
    A descrição abaixo, dá uma idéia do que ela faz. */    
 /**************************************
  *
@@ -1074,25 +1074,25 @@ PORT DLL_EXPORT INET_connect (
  *	is for a server process.
  *
  **************************************/
-  int l, n;
-  SOCKET 			s;
-  PORT			port;
-  TEXT			*protocol, temp [128], *p;
-  struct sockaddr_in	address;
+  int                   l, n;
+  SOCKET                s;
+  PORT                  port;
+  TEXT                  *protocol, temp [128], *p;
+  struct sockaddr_in    address;
 #ifndef VMS
-  struct hostent		*host;
-  struct servent		*service;
-  TEXT			msg [64];
+  struct hostent        *host;
+  struct servent        *service;
+  TEXT                  msg [64];
 #endif
 #ifdef DGUX
-  SCHAR			optval;
+  SCHAR                 optval;
 #else
-  int			optval;
+  int                   optval;
 #endif
  
 #ifdef DEBUG
   {
-    UCHAR	*p;
+    UCHAR *p;
     if (INET_trace & TRACE_operations)
     {
       ib_fprintf (ib_stdout,"INET_connect\n");
@@ -1119,19 +1119,19 @@ PORT DLL_EXPORT INET_connect (
   {
     strcpy (temp, name);
     for (p = temp; *p;)
-	  if (*p++ == '/')
-	  {
-	    p [-1] = 0;
-	    name = temp;
-	    protocol = p;
-	    break;
-	  }
+      if (*p++ == '/')
+      {
+        p [-1] = 0;
+        name = temp;
+        protocol = p;
+        break;
+      }
   }
 
   if (name && *name)
   {
     if (port->port_connection)
-  	  ALLR_free (port->port_connection);
+      ALLR_free (port->port_connection);
     port->port_connection = REMOTE_make_string (name);
   }
   else
@@ -1150,10 +1150,10 @@ PORT DLL_EXPORT INET_connect (
   if (packet)
   {
     if (getaddr (name, &address) == -1)
-	{
-	  inet_error (port, "gethostbyname", isc_net_connect_err, 0);
-	  return NULL;
-	}
+    {
+      inet_error (port, "gethostbyname", isc_net_connect_err, 0);
+      return NULL;
+    }
   }
   else
     address.sin_addr.s_addr = INADDR_ANY;
@@ -1182,27 +1182,27 @@ PORT DLL_EXPORT INET_connect (
     {
       for (retry = 0; retry < INET_RETRY_CALL; retry++)
       {
-	    host = GETHOSTBYNAME (name);
-	    if (host) break;
+        host = GETHOSTBYNAME (name);
+        if (host) break;
       }
-	}
+    }
   }
   THREAD_ENTER;
   if (!host)
   {
     sprintf (msg, 
-	      "INET/INET_connect: gethostbyname failed, error code = %d", 
-	      H_ERRNO);
+      "INET/INET_connect: gethostbyname failed, error code = %d", 
+      H_ERRNO);
     gds__log (msg, NULL_PTR);
     inet_gen_error (port,
       isc_network_error,
-	  isc_arg_string, 
-	  port->port_connection->str_data, 
-	  isc_arg_gds, 
-	  isc_net_lookup_err,
+      isc_arg_string, 
+      port->port_connection->str_data, 
+      isc_arg_gds, 
+      isc_net_lookup_err,
       isc_arg_gds,
-	  isc_host_unknown, 
-	  0);
+      isc_host_unknown, 
+      0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	
@@ -1234,10 +1234,10 @@ PORT DLL_EXPORT INET_connect (
     {
       for (retry = 0; retry < INET_RETRY_CALL; retry++)
       {
-	    service = GETSERVBYNAME (protocol, "tcp");
-  	    if (service) break;
+        service = GETSERVBYNAME (protocol, "tcp");
+        if (service) break;
       }
-   	}
+    }
   }
 #endif /* WIN_NT */
   THREAD_ENTER;
@@ -1250,16 +1250,16 @@ PORT DLL_EXPORT INET_connect (
     inet_gen_error (port, 
       isc_network_error,
       isc_arg_string, 
-	  port->port_connection->str_data, 
-	  isc_arg_gds,
-	  isc_net_lookup_err, 
-	  isc_arg_gds, 
-	  isc_service_unknown,
- 	  isc_arg_string, 
-	  protocol,
-	  isc_arg_string, 
-	  "tcp", 
-	  0);
+      port->port_connection->str_data, 
+      isc_arg_gds,
+      isc_net_lookup_err, 
+      isc_arg_gds, 
+      isc_service_unknown,
+      isc_arg_string, 
+      protocol,
+      isc_arg_string, 
+      "tcp", 
+      0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	 
@@ -1299,16 +1299,16 @@ PORT DLL_EXPORT INET_connect (
   {
     THREAD_EXIT;
     n = connect ((SOCKET) port->port_handle, 
- 	  (struct sockaddr *) &address, sizeof (address));
+      (struct sockaddr *) &address, sizeof (address));
     THREAD_ENTER;
     if (n != -1 && send_full (port, packet))
       return port;
     else
-	{
-	  inet_error (port, "connect", isc_net_connect_err, ERRNO);
-	  disconnect (port);
-	  return NULL;
-	}
+    {
+      inet_error (port, "connect", isc_net_connect_err, ERRNO);
+      disconnect (port);
+      return NULL;
+    }
   }
 
   /* We're a server, so wait for a host to show up */
@@ -1385,35 +1385,35 @@ PORT DLL_EXPORT INET_connect (
     THREAD_EXIT;
     l = sizeof (address);
     s = accept ((SOCKET) port->port_handle, 
-  	  (struct sockaddr *) &address, &l);
+      (struct sockaddr *) &address, &l);
     if (s == INVALID_SOCKET)
-	{
-	  THREAD_ENTER;
-	  inet_error (port, "accept", isc_net_connect_err, ERRNO);
-	  disconnect (port);
-	  return NULL;
-	}
+    {
+      THREAD_ENTER;
+      inet_error (port, "accept", isc_net_connect_err, ERRNO);
+      disconnect (port);
+      return NULL;
+    }
 #ifdef WIN_NT
     if ((flag & SRVR_debug) || !fork (s, flag))
 #else
     if ((flag & SRVR_debug) || !fork())
 #endif
-	{
-	  THREAD_ENTER;
-	  SOCLOSE ((SOCKET) port->port_handle);
-	  port->port_handle = (HANDLE) s;
-	  port->port_server_flags |= SRVR_server;
-	  return port;
-	}
+    {
+      THREAD_ENTER;
+      SOCLOSE ((SOCKET) port->port_handle);
+      port->port_handle = (HANDLE) s;
+      port->port_server_flags |= SRVR_server;
+      return port;
+    }
     THREAD_ENTER;
     SOCLOSE (s);
   }
 }
 
 PORT INET_reconnect (
-    HANDLE	handle,
-    TEXT	*name,
-    STATUS	*status_vector)
+  HANDLE	handle,
+  TEXT	*name,
+  STATUS	*status_vector)
 {
 /**************************************
  *
