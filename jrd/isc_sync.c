@@ -2205,8 +2205,10 @@ return TRUE;
 }
 
 int DLL_EXPORT ISC_event_post (
-    EVENT	event)
+  EVENT event)
 {
+/* RDT: 20230620 - Este código usa um evento do Windows via SetEvent, para sinalizar determinada situação.
+   O evento é passado como parâmetro, então a função vai chamar SetEvent, para sinalizar o mesmo. */
 /**************************************
  *
  *	I S C _ e v e n t _ p o s t	( W I N _ N T )
@@ -2218,17 +2220,20 @@ int DLL_EXPORT ISC_event_post (
  *
  **************************************/
 
-if (!event->event_shared)
+  if (!event->event_shared)
     ++event->event_count;
-else
+  else
     ++event->event_shared->event_count;
 
-if (event->event_pid != process_id)
+  if (event->event_pid != process_id)
     ISC_kill (event->event_pid, event->event_type, event->event_handle);
-else
+  else
+    /* RDT: 20230620 - Do que entendi, do comentário da função e da descrição de SetEvent, 
+       na chamada abaixo o SetEvent informará ao scheduler do Windows, que a thread deseja
+       parar sua execução. */
     SetEvent ((HANDLE) event->event_handle);
 
-return 0;
+  return 0;
 }
 
 int DLL_EXPORT ISC_event_wait (
