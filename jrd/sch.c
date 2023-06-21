@@ -459,9 +459,12 @@ void SCH_enter (void)
 
   if (active_thread->thread_flags & THREAD_hiber)
     /* RDT: 20230618 - Deve executar a thread. */
+    /* RDT: 20230620 - Não é verdade, chamar schedule vai justamente colocar outra thread como ativa. */
     schedule();
 
   /* RDT: 20230618 - Em seguida parece que vai parar a execução da thread, mas preciso estudar os dois mecanismos. */ 
+  /* RDT: 20230620 - É o contrário aqui também, ou seja, stall vai esperar esta thread se tornar a thread ativa. Neste momento,
+     stall retornará */
   stall (thread);
 	
   if (mutex_state = THD_mutex_unlock (thread_mutex))
