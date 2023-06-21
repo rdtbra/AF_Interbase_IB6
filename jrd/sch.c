@@ -175,6 +175,7 @@ void API_ROUTINE gds__thread_enter (void)
 
 void API_ROUTINE gds__thread_exit (void)
 {
+/* RDT: 20230620 - gds__thread_exit apenas chama SCH_exit. */
 /**************************************
  *
  *	g d s _ $ t h r e a d _ e x i t
@@ -185,8 +186,8 @@ void API_ROUTINE gds__thread_exit (void)
  *	Check-out with thread traffic cop.
  *
  **************************************/
-
-SCH_exit ();
+  /* RDT: 20230620 - chamar a verdadeira função, que retirará a thread da lista circular. */
+  SCH_exit ();
 }
 
 #ifdef VMS
