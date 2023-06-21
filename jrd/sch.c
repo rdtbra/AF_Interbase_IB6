@@ -425,7 +425,7 @@ void SCH_enter (void)
 	free_threads = NULL;
 	thread->thread_next = thread->thread_prior = thread;
 	thread->thread_flags = 0;
-	thread->thread_id = THD_get_thread_id();
+        thread->thread_id = THD_get_thread_id();
 	return;
       }
   }
