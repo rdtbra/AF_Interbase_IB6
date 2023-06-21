@@ -473,6 +473,7 @@ void SCH_enter (void)
 
 void SCH_exit (void)
 {
+/* RDT: 20230620 - Esta função remove a thead da lista circular e chama schedule. */
 /**************************************
  *
  *	S C H _ e x i t
@@ -484,45 +485,46 @@ void SCH_exit (void)
  *	scheduler, and release thread block.
  *
  **************************************/
-THREAD	thread, prior, next;
-int	mutex_state;
+  THREAD thread, prior, next;
+  int    mutex_state;
 
 #ifdef NeXT
-return;
+  return;
 #endif
 
-SCH_validate();
+  SCH_validate();
 
-if (!multi_threaded && !ast_thread)
-    {
+  if (!multi_threaded && !ast_thread)
+  {
     free_threads = active_thread;
     active_thread = NULL;
     free_threads->thread_next = NULL;
     return;
-    }
+  }
 
-if (mutex_state = THD_mutex_lock (thread_mutex))
+  if (mutex_state = THD_mutex_lock (thread_mutex))
     mutex_bugcheck ("mutex lock", mutex_state);
 
-ast_enable();	/* Reenable AST delivery */
+  ast_enable(); /* Reenable AST delivery */
 
-thread = active_thread;
+  thread = active_thread;
 
-if (thread == thread->thread_next)
+  if (thread == thread->thread_next)
     active_thread = NULL;
-else
-    {
+  else
+  {
     next = thread->thread_next;
     active_thread = prior = thread->thread_prior;
     prior->thread_next = next;
     next->thread_prior = prior;
-    }
+  }
 
-thread->thread_next = free_threads;
-free_threads = thread;
-schedule();
+  thread->thread_next = free_threads;
+  free_threads = thread;
+  /* RDT: 20230620 - Lembrar que schedule vai chamar SetEvent. */
+  schedule();
 
-if (mutex_state = THD_mutex_unlock (thread_mutex))
+  if (mutex_state = THD_mutex_unlock (thread_mutex))
     mutex_bugcheck ("mutex unlock", mutex_state);
 }
 
