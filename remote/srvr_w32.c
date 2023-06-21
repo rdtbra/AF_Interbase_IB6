@@ -272,8 +272,9 @@ if (!(server_flag & SRVR_non_service))
 }
 
 static void THREAD_ROUTINE inet_connect_wait_thread (
-    void        *dummy)
+  void *dummy)
 {
+/* RDT: 20230620 - inet_connect_wait_thread - cria uma thread para suportar conexões ao servidor. */
 /**************************************
  *
  *      i n e t _ c o n n e c t _ w a i t _ t h r e a d
@@ -283,23 +284,26 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
  * Functional description
  *
  **************************************/
-	void    *thread;
-	STATUS  status_vector [20];
-	PORT    port;
+  void   *thread;
+  STATUS status_vector [20];
+  PORT   port;
 
-	if (!(server_flag & SRVR_non_service))
+  if (!(server_flag & SRVR_non_service))
     thread = CNTL_insert_thread();
 
-	THREAD_ENTER;
-	port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
+  /* RDT: 20230620 - antes de chamar INET_connect, inet_connect_wait_thread vai se inserir 
+     no 'scheduler' do Interbase (a lista circular), e aguardará a ativação da thread. Só
+     aí, após retornar de THREAD_ENTER, INET_connect será executada. */
+  THREAD_ENTER;
+  port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
 			NULL_PTR, 0);
-	THREAD_EXIT;
-	if (port)
+  THREAD_EXIT;
+  if (port)
     SRVR_multi_thread (port, server_flag);
-	else
+  else
     gds__log_status (NULL_PTR, status_vector);
 
-	if (!(server_flag & SRVR_non_service))
+  if (!(server_flag & SRVR_non_service))
     CNTL_remove_thread (thread);
 }
 
