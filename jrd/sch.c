@@ -522,6 +522,7 @@ void SCH_exit (void)
 
   thread->thread_next = free_threads;
   free_threads = thread;
+	
   /* RDT: 20230620 - Lembrar que schedule vai chamar SetEvent. */
   schedule();
 
