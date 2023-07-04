@@ -181,7 +181,7 @@ int WINAPI WinMain (
   {
     /* RDT: 20230704 - Esta função preparará threads de comunicação, via serviços no Windows. */
     CNTL_init ((FPTR_VOID) start_connections_thread, REMOTE_SERVICE);
-    /* RDT: 20230704 - Iniciar os serviços. A tabela de serviços está aqui: */
+    /* RDT: 20230704 - Iniciar os serviços. A tabela de serviços está aqui: service_table - https://github.com/rdtbra/IB6/blob/2f31890af0f69e039c53b5a769f073c57c85edda/remote/srvr_w32.c#L121. */
     if (!StartServiceCtrlDispatcher (service_table))
     {
       if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
