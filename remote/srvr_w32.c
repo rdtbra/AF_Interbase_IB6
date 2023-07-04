@@ -117,9 +117,10 @@ static TEXT             protocol_inet [128];
 static TEXT             protocol_wnet [128];
 static USHORT           server_flag;
 
+/* RDT: 20230704 - Tabela com a chamada a função que representará nossos serviços no Windows. */
 static SERVICE_TABLE_ENTRY      service_table [] = {
-    REMOTE_SERVICE, (LPSERVICE_MAIN_FUNCTION) CNTL_main_thread,
-    NULL, NULL
+  REMOTE_SERVICE, (LPSERVICE_MAIN_FUNCTION) CNTL_main_thread,
+  NULL, NULL
 };
 
 #ifdef XNET
