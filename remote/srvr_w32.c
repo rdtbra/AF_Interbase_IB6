@@ -389,8 +389,9 @@ static void service_connection (
 
 SRVR_main (port, (USHORT)(server_flag & ~SRVR_multi_client));
 }
-/* RDT: 20230704 - start_connections_thread é chamada logo no início da execução do servidor. */
 
+
+/* RDT: 20230704 - start_connections_thread é chamada logo no início da execução do servidor. */
 static void THREAD_ROUTINE start_connections_thread (
   int flag)
 {
