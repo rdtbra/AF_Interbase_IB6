@@ -276,9 +276,10 @@ service_connection (port);
 if (!(server_flag & SRVR_non_service))
     CNTL_remove_thread (thread);
 }
+/* RDT: 20230704 - Iniciar thread de comunicação via tcpip. */
 
 static void THREAD_ROUTINE inet_connect_wait_thread (
-    void        *dummy)
+  void *dummy)
 {
 /**************************************
  *
@@ -289,23 +290,25 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
  * Functional description
  *
  **************************************/
-	void    *thread;
-	STATUS  status_vector [20];
-	PORT    port;
+  void    *thread;
+  STATUS  status_vector [20];
+  PORT    port;
 
-	if (!(server_flag & SRVR_non_service))
+  if (!(server_flag & SRVR_non_service))
     thread = CNTL_insert_thread();
 
-	THREAD_ENTER;
-	port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
-			NULL_PTR, 0);
-	THREAD_EXIT;
-	if (port)
+  THREAD_ENTER;
+  /* RDT: 20230704 - INET_connect criará sockets */
+  port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
+    NULL_PTR, 0);
+  THREAD_EXIT;
+	
+  if (port)
     SRVR_multi_thread (port, server_flag);
-	else
+  else
     gds__log_status (NULL_PTR, status_vector);
 
-	if (!(server_flag & SRVR_non_service))
+  if (!(server_flag & SRVR_non_service))
     CNTL_remove_thread (thread);
 }
 
