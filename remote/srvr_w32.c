@@ -386,9 +386,10 @@ static void service_connection (
 
 SRVR_main (port, (USHORT)(server_flag & ~SRVR_multi_client));
 }
+/* RDT: 20230704 - start_connections_thread é chamada logo no início da execução do servidor. */
 
 static void THREAD_ROUTINE start_connections_thread (
-    int         flag)
+  int flag)
 {
 /**************************************
  *
@@ -399,11 +400,12 @@ static void THREAD_ROUTINE start_connections_thread (
  * Functional description
  *
  **************************************/
-	HANDLE	ipc_thread_handle = 0;
+  HANDLE ipc_thread_handle = 0;
 
 #ifndef XNET
-	if (server_flag & SRVR_ipc)
+  if (server_flag & SRVR_ipc)
   {
+    /* RDT: 20230704 - Se o servidor deve atender ipc, iniciar a thread. */
     gds__thread_start ((FPTR_INT) ipc_connect_wait_thread, 
 			NULL_PTR, 
 			THREAD_medium, 
@@ -415,20 +417,23 @@ static void THREAD_ROUTINE start_connections_thread (
      * not have succeeded.  IE. It already exists.                      */
 
     if (WaitForSingleObject(ipc_thread_handle,2000) != WAIT_TIMEOUT)
-		{
-			CNTL_shutdown_service("Could not start service");
-			return;
-		}
+    {
+      CNTL_shutdown_service("Could not start service");
+      return;
+    }
   }
 #endif /* XNET */
 
-	if (server_flag & SRVR_inet)
+  if (server_flag & SRVR_inet)
+    /* RDT: 20230704 - Iniciar a thread de comunicação tcpip. */
     gds__thread_start ((FPTR_INT) inet_connect_wait_thread, 
 			NULL_PTR, 
 			THREAD_medium, 
 			0, 
 			NULL_PTR);
-	if (server_flag & SRVR_pipe)
+	
+  if (server_flag & SRVR_pipe)
+    /* RDT: 20230704 - Iniciar o thread de comunicação named pipes */ 
     gds__thread_start ((FPTR_INT) wnet_connect_wait_thread, 
 			NULL_PTR, 
 			THREAD_medium, 
