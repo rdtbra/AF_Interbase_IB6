@@ -58,10 +58,12 @@ static MUTX_T			thread_mutex [1];
 static THREAD			threads;
 static HANDLE			hMutex = NULL;
 static BOOLEAN			bGuarded = FALSE;
+
+/* RDT: 20230704 - Esta função vai atribuir o ponteiro da função main_handler, com o argumento que foi passado em sua chamada */
 
 void CNTL_init (
-    void	(*handler)(),
-    TEXT	*name)
+  void (*handler)(),
+  TEXT *name)
 {
 /**************************************
  *
@@ -72,9 +74,9 @@ void CNTL_init (
  * Functional description
  *
  **************************************/
-
-	main_handler = handler;
-	service_name = name;
+  /* RDT: 20230704 - Pela chamada que vem de WinMain, a função handler será start_connections_thread. */
+  main_handler = handler;
+  service_name = name;
 }
 
 void *CNTL_insert_thread (void)
@@ -106,8 +108,10 @@ THD_mutex_unlock (thread_mutex);
 
 return new_thread;
 }
+
+/* RDT: 20230704 - thread de controle do ambiente. Vai chamar main_handler. Como vimos, de WinMain se traduz para start_connections_thread. */
 void CNTL_main_thread (
-	SLONG	argc,
+  SLONG argc,
   SCHAR	*argv[])
 {
 /**************************************
@@ -119,72 +123,74 @@ return new_thread;
  * Functional description
  *
  **************************************/
-	int	flag;
-	TEXT	*p, default_mode [100];
-	DWORD	last_error;
+  int flag;
+  TEXT *p, default_mode [100];
+  DWORD last_error;
 
-	HANDLE cleanup_thread_handle;
-	DWORD  count, return_from_wait, cleanup_thread_id;
+  HANDLE cleanup_thread_handle;
+  DWORD  count, return_from_wait, cleanup_thread_id;
 
-	service_handle = RegisterServiceCtrlHandler (service_name, 
-                                           (LPHANDLER_FUNCTION) control_thread);
-	if (!service_handle)
+  /* RDT: 20230704 - Registra a função control_thread como função de controle do serviço. */
+  service_handle = RegisterServiceCtrlHandler (service_name, 
+    (LPHANDLER_FUNCTION) control_thread);
+
+  if (!service_handle)
     return;
 
-	THD_mutex_init (thread_mutex);
+  THD_mutex_init (thread_mutex);
 
 #if (defined SUPERCLIENT || defined SUPERSERVER)
-	flag = SRVR_multi_client;
+  flag = SRVR_multi_client;
 #else
-	flag = 0;
+  flag = 0;
 #endif
 
 /* Get the default client mode from the registry. */
+  if (ISC_get_registry_var ("DefaultClientMode",
+    default_mode, sizeof (default_mode), NULL_PTR) != -1)
+  if (default_mode [0] == '-')
+    parse_switch (&default_mode [1], &flag);
 
-	if (ISC_get_registry_var ("DefaultClientMode",
-		default_mode, sizeof (default_mode), NULL_PTR) != -1)
-    if (default_mode [0] == '-')
-			parse_switch (&default_mode [1], &flag);
+  /* Parse the command line looking for any additional arguments. */
+  argv++;
 
-	/* Parse the command line looking for any additional arguments. */
-	argv++;
-
-	while (--argc)
+  while (--argc)
   {
     p = *argv++;
     if (*p++ = '-')
-			parse_switch (p, &flag);
+      parse_switch (p, &flag);
   }
 
-	if (report_status (SERVICE_START_PENDING, NO_ERROR, 1, 3000) &&
+  /* RDT: 20230704 - Aqui cria um evento associando a main_handler. */
+  if (report_status (SERVICE_START_PENDING, NO_ERROR, 1, 3000) &&
      (stop_event_handle = CreateEvent (NULL, TRUE, FALSE, NULL)) != NULL &&
       report_status (SERVICE_START_PENDING, NO_ERROR, 2, 3000) &&
       !gds__thread_start ((FPTR_INT) main_handler, (void*) flag, 0, 0, NULL_PTR) &&
       report_status (SERVICE_RUNNING, NO_ERROR, 0, 0))
     WaitForSingleObject (stop_event_handle, INFINITE);
 
-	last_error = GetLastError();
+  last_error = GetLastError();
 
-	if (stop_event_handle)
+  if (stop_event_handle)
     CloseHandle (stop_event_handle);
     
-	/* set the status with the timer, start the cleanup thread and wait for the
- 	 * cleanup thread to exit or the timer to expire, once we reach the max number
+  /* set the status with the timer, start the cleanup thread and wait for the
+   * cleanup thread to exit or the timer to expire, once we reach the max number
    * of loops or the thread exits set the state to shutdown and exit */
-	cleanup_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) cleanup_thread,
-	                    		NULL, 0, &cleanup_thread_id);
-	count = 1;
+  cleanup_thread_handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) cleanup_thread,
+    NULL, 0, &cleanup_thread_id);
+  count = 1;
 
-	do
-	{
+  do
+  {
     count++;
     report_status (SERVICE_STOP_PENDING, NO_ERROR, count, 60000); 
     return_from_wait = WaitForSingleObject (cleanup_thread_handle, 50000); 
-	} while (count < 10 && return_from_wait == WAIT_TIMEOUT);
+  } while (count < 10 && return_from_wait == WAIT_TIMEOUT);
 	
-	/* loop for 10 times about 7 minutes should be enough time for the server to
- 	 * cleanup */
-	report_status (SERVICE_STOPPED, last_error, 0, 0);
+  /* loop for 10 times about 7 minutes should be enough time for the server to
+   * cleanup */
+  report_status (SERVICE_STOPPED, last_error, 0, 0);
 }
 
 void CNTL_remove_thread (

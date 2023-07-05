@@ -1051,6 +1051,7 @@ if (packet->p_acpt.p_acpt_type != ptype_out_of_band)
 
 return port;
 }
+/* RDT: 20230704 - Cria recursos para estabelecer conexão com o servidor. */	
 
 PORT DLL_EXPORT INET_connect (
   TEXT    *name,
@@ -1074,25 +1075,25 @@ PORT DLL_EXPORT INET_connect (
  *	is for a server process.
  *
  **************************************/
-  int                   l, n;
-  SOCKET                s;
-  PORT                  port;
-  TEXT                  *protocol, temp [128], *p;
-  struct sockaddr_in    address;
+  int			l, n;
+  SOCKET 		s;
+  PORT			port;
+  TEXT			*protocol, temp [128], *p;
+  struct sockaddr_in	address;
 #ifndef VMS
-  struct hostent        *host;
-  struct servent        *service;
-  TEXT                  msg [64];
+  struct hostent	*host;
+  struct servent	*service;
+  TEXT			msg [64];
 #endif
 #ifdef DGUX
-  SCHAR                 optval;
+  SCHAR			optval;
 #else
-  int                   optval;
+  int			optval;
 #endif
  
 #ifdef DEBUG
   {
-    UCHAR *p;
+    UCHAR	*p;
     if (INET_trace & TRACE_operations)
     {
       ib_fprintf (ib_stdout,"INET_connect\n");
@@ -1103,7 +1104,6 @@ PORT DLL_EXPORT INET_connect (
       INET_force_error = atoi (p);
   }
 #endif
-
   port = alloc_port (NULL_PTR);
   port->port_status_vector = status_vector;
   REMOTE_get_timeout_params (port, dpb, dpb_length);
@@ -1221,6 +1221,7 @@ PORT DLL_EXPORT INET_connect (
   THREAD_EXIT;
   service = GETSERVBYNAME (protocol, "tcp");
 #ifdef WIN_NT
+
   /* On Windows NT/9x, getservbyname can only accomodate
    * 1 call at a time.  In this case it returns the error
    * WSAEINPROGRESS. 
@@ -1289,7 +1290,7 @@ PORT DLL_EXPORT INET_connect (
   {
     inet_error (port, "socket", isc_net_connect_err, ERRNO);
 #ifdef WINDOWS_ONLY
-    NetworkLibraryCleanup ();
+    NetworkLibraryCleanup();
 #endif /* WINDOWS_ONLY */	
     return NULL;
   }
@@ -1301,6 +1302,7 @@ PORT DLL_EXPORT INET_connect (
     n = connect ((SOCKET) port->port_handle, 
       (struct sockaddr *) &address, sizeof (address));
     THREAD_ENTER;
+	  
     if (n != -1 && send_full (port, packet))
       return port;
     else
@@ -1343,6 +1345,7 @@ PORT DLL_EXPORT INET_connect (
 
     n = setsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_LINGER,
       (SCHAR*) &lingerInfo, sizeof (lingerInfo));
+
     if (n == -1)
     {
       inet_error (port, "setsockopt LINGER", isc_net_connect_listen_err, ERRNO);
@@ -1405,7 +1408,8 @@ PORT DLL_EXPORT INET_connect (
       port->port_server_flags |= SRVR_server;
       return port;
     }
-    THREAD_ENTER;
+
+   THREAD_ENTER;
     SOCLOSE (s);
   }
 }
