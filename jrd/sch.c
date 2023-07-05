@@ -156,6 +156,9 @@ return enabled;
 
 void API_ROUTINE gds__thread_enter (void)
 {
+/* RDT: 20230618 - Pelo que vi esta função é chamada quando não temos SUPERSERVER definido. 
+   Porém, no geral ela chamará SCH_enter também. O contexto pode ser diferente. Aos poucos
+   vamos entender, creio */
 /**************************************
  *
  *	g d s _ $ t h r e a d _ e n t e r
@@ -167,11 +170,12 @@ void API_ROUTINE gds__thread_enter (void)
  *
  **************************************/
 
-SCH_enter();
+  SCH_enter();
 }
 
 void API_ROUTINE gds__thread_exit (void)
 {
+/* RDT: 20230620 - gds__thread_exit apenas chama SCH_exit. */
 /**************************************
  *
  *	g d s _ $ t h r e a d _ e x i t
@@ -182,8 +186,8 @@ void API_ROUTINE gds__thread_exit (void)
  *	Check-out with thread traffic cop.
  *
  **************************************/
-
-SCH_exit ();
+  /* RDT: 20230620 - chamar a verdadeira função, que retirará a thread da lista circular. */
+  SCH_exit ();
 }
 
 #ifdef VMS
@@ -390,6 +394,8 @@ return active_thread;
 
 void SCH_enter (void)
 {
+/* RDT: 20230618 - Este parece ser o ponto onde o scheduler interno de threads é
+   iniciado. */	
 /**************************************
  *
  *	S C H _ e n t e r
@@ -401,71 +407,74 @@ void SCH_enter (void)
  *	Humor him.
  *
  **************************************/
-THREAD	thread, prior;
-int	mutex_state;
+  THREAD thread, prior;
+  int    mutex_state;
 
 #ifdef NeXT
-return;
+  return;
 #endif
 
-/* Special case single thread case */
-
-if (!multi_threaded)
-    {
+  /* Special case single thread case */
+  if (!multi_threaded)
+  {
     if (active_thread || ast_thread)
-	multi_threaded = TRUE;
+      multi_threaded = TRUE;
     else
-	if (free_threads)
-	    {
-	    thread = active_thread = free_threads;
-	    free_threads = NULL;
-	    thread->thread_next = thread->thread_prior = thread;
-	    thread->thread_flags = 0;
-	    thread->thread_id = THD_get_thread_id();
-	    return;
-	    }
-    }
+      if (free_threads)
+      {
+        thread = active_thread = free_threads;
+        free_threads = NULL;
+        thread->thread_next = thread->thread_prior = thread;
+        thread->thread_flags = 0;
+        thread->thread_id = THD_get_thread_id();
+        return;
+      }
+  }
 
-if (!init_flag)
+  if (!init_flag)
     SCH_init();
 
-/* Get mutex on scheduler data structures to prevent tragic misunderstandings */
-
-if (mutex_state = THD_mutex_lock (thread_mutex))
+  /* Get mutex on scheduler data structures to prevent tragic misunderstandings */
+  if (mutex_state = THD_mutex_lock (thread_mutex))
     mutex_bugcheck ("mutex lock", mutex_state);
 
-thread = alloc_thread();
-thread->thread_id = THD_get_thread_id();
+  thread = alloc_thread();
+  thread->thread_id = THD_get_thread_id();
 
-/* Link thread block into circular list of active threads */
-
-if (active_thread)
-    {
+  /* Link thread block into circular list of active threads */
+  if (active_thread)
+  {
     /* The calling thread should NOT be the active_thread 
        This is to prevent deadlock by the same thread */
     assert (thread->thread_id != active_thread->thread_id);
-
     thread->thread_next = active_thread;
     thread->thread_prior = prior = active_thread->thread_prior;
     active_thread->thread_prior = thread;
     prior->thread_next = thread;
-    }
-else
-    {
+  }
+  else
+  {
     thread->thread_next = thread->thread_prior = thread;
     active_thread = thread;
-    }
+  }
 
-if (active_thread->thread_flags & THREAD_hiber)
+  if (active_thread->thread_flags & THREAD_hiber)
+    /* RDT: 20230618 - Deve executar a thread. */
+    /* RDT: 20230620 - Não é verdade, chamar schedule vai justamente colocar outra thread como ativa. */
     schedule();
 
-stall (thread);
-if (mutex_state = THD_mutex_unlock (thread_mutex))
+  /* RDT: 20230618 - Em seguida parece que vai parar a execução da thread, mas preciso estudar os dois mecanismos. */ 
+  /* RDT: 20230620 - É o contrário aqui também, ou seja, stall vai esperar esta thread se tornar a thread ativa. Neste momento,
+     stall retornará */
+  stall (thread);
+	
+  if (mutex_state = THD_mutex_unlock (thread_mutex))
     mutex_bugcheck ("mutex unlock", mutex_state);
 }
 
 void SCH_exit (void)
 {
+/* RDT: 20230620 - Esta função remove a thead da lista circular e chama schedule. */
 /**************************************
  *
  *	S C H _ e x i t
@@ -477,45 +486,47 @@ void SCH_exit (void)
  *	scheduler, and release thread block.
  *
  **************************************/
-THREAD	thread, prior, next;
-int	mutex_state;
+  THREAD thread, prior, next;
+  int    mutex_state;
 
 #ifdef NeXT
-return;
+  return;
 #endif
 
-SCH_validate();
+  SCH_validate();
 
-if (!multi_threaded && !ast_thread)
-    {
+  if (!multi_threaded && !ast_thread)
+  {
     free_threads = active_thread;
     active_thread = NULL;
     free_threads->thread_next = NULL;
     return;
-    }
+  }
 
-if (mutex_state = THD_mutex_lock (thread_mutex))
+  if (mutex_state = THD_mutex_lock (thread_mutex))
     mutex_bugcheck ("mutex lock", mutex_state);
 
-ast_enable();	/* Reenable AST delivery */
+  ast_enable(); /* Reenable AST delivery */
 
-thread = active_thread;
+  thread = active_thread;
 
-if (thread == thread->thread_next)
+  if (thread == thread->thread_next)
     active_thread = NULL;
-else
-    {
+  else
+  {
     next = thread->thread_next;
     active_thread = prior = thread->thread_prior;
     prior->thread_next = next;
     next->thread_prior = prior;
-    }
+  }
 
-thread->thread_next = free_threads;
-free_threads = thread;
-schedule();
+  thread->thread_next = free_threads;
+  free_threads = thread;
+	
+  /* RDT: 20230620 - Lembrar que schedule vai chamar SetEvent. */
+  schedule();
 
-if (mutex_state = THD_mutex_unlock (thread_mutex))
+  if (mutex_state = THD_mutex_unlock (thread_mutex))
     mutex_bugcheck ("mutex unlock", mutex_state);
 }
 
@@ -899,6 +910,9 @@ ABORT;
 
 static BOOLEAN schedule (void)
 {
+/* RDT: 20230618 - E esta parece ser a função que irá disparar o scheduler. Na verdade ela vai circular a lista de threads 
+   procurando pela próxima thread a ativar. Isso me dá idéia de que o interbase usa threads do so, mesmo que esteja 
+   controlando a execução das threads via sistema operacional. */
 /**************************************
  *
  *	s c h e d u l e
@@ -911,36 +925,42 @@ static BOOLEAN schedule (void)
  *	return FALSE.
  *
  **************************************/
-THREAD	thread;
+  THREAD thread;
 
 #ifdef NETWARE_386
-/* Be a good citizen, yield CPU periodically */
-yield_count++;
-if (yield_count > YIELD_LIMIT)
-    {
+  /* Be a good citizen, yield CPU periodically */
+  yield_count++;
+  if (yield_count > YIELD_LIMIT)
+  {
     yield_count = 0;
     ThreadSwitch();
-    }
+  }
 #endif
 
-if (!active_thread)
+  if (!active_thread)
     return FALSE;
 
-thread = active_thread;
+  thread = active_thread;
 
-for (;;)
-    {
+  /* RDT: 20230618 - Este loop percorre a lista de threads verificando, a partir da thread atual, 
+     qual a próxima que dever ser selecionada. */
+  for (;;)
+  {
     thread = thread->thread_next;
+    /* RDT: 20230618 - Caso a thread não tenha flag THREAD_hiber, será selecionada */
     if (!(thread->thread_flags & THREAD_hiber))
-	break;
+      break;
     if (thread == active_thread)
-	return FALSE;
-    }
+      return FALSE;
+  }
 
-active_thread = thread;
-ISC_event_post (active_thread->thread_stall);
+  /* RDT: 20230618 - A thread se tornará a thread ativa. */
+  active_thread = thread;
+  /* RDT: 20230618 - Talvez aqui esteja parte da resposta de como funciona o verdadeiro scheduler! 
+     ISC - deve ser Interbase Signal Controler. */
+  ISC_event_post (active_thread->thread_stall);
 
-return TRUE;
+  return TRUE;
 }
 
 static BOOLEAN schedule_active (
@@ -995,8 +1015,11 @@ return ret;
 }
 
 static void stall (
-    THREAD	thread)
+  THREAD thread)
 {
+/* RDT: 20230620 - stall é parar! em português. A ideia aqui é que a thread entre em um loop,
+   esperando para se tornar a thread ativa, e, neste momento o loop é interrompido. ast_disable
+   é executado, neste momento, mas não vou me preocupar com esta chamada agora. */
 /**************************************
  *
  *	s t a l l
@@ -1007,29 +1030,40 @@ static void stall (
  *	Stall until our thread is made active.
  *
  **************************************/
-SLONG	value;
-EVENT	ptr;
-int	mutex_state;
+  SLONG value;
+  EVENT ptr;
+  int   mutex_state;
 
-if (thread != active_thread || thread->thread_flags & THREAD_hiber ||
-    (ast_thread && ast_thread->thread_flags & THREAD_ast_active))
+  if (thread != active_thread || thread->thread_flags & THREAD_hiber ||
+     (ast_thread && ast_thread->thread_flags & THREAD_ast_active))
     for (;;)
-	{
-	value = ISC_event_clear (thread->thread_stall);
-	if (thread == active_thread && !(thread->thread_flags & THREAD_hiber) &&
-	    (!ast_thread || !(ast_thread->thread_flags & THREAD_ast_active)))
-	    break;
-	if (mutex_state = THD_mutex_unlock (thread_mutex))
-	    mutex_bugcheck ("mutex unlock", mutex_state);
-	ptr = thread->thread_stall;
-	ISC_event_wait (1, &ptr, &value, 0, NULL_PTR, NULL_PTR);
-	if (mutex_state = THD_mutex_lock (thread_mutex))
-	    mutex_bugcheck ("mutex lock", mutex_state);
-	}
+    {
+      /* RDT: 20230620 - Limpar o evento, já que vamos sinalizá-lo novamente logo abaixo. */
+      value = ISC_event_clear (thread->thread_stall);
 
-/* Explicitly disable AST delivery for active thread */
+      /* RDT: 20230620 - Aguardar até o momento em que esta thread se torne a thread ativa. 
+         Isto deve ocorrer por alguma outra thread executando a função SCH_enter + schedule, 
+	 que vimos que percorrerá a lista circular de threads, tornando alguma ativa. Quando 
+         esta thread for a ativa, saímos do loop. */
+      if (thread == active_thread && !(thread->thread_flags & THREAD_hiber) &&
+         (!ast_thread || !(ast_thread->thread_flags & THREAD_ast_active)))
+        break;
 
-ast_disable();
+      /* RDT: 20230620 - Esta thread não é a ativa no contexto do Interbase, então, ela 
+         vai entrar em estado de espera novamente, chamando ISC_event_wait abaixo. */
+      if (mutex_state = THD_mutex_unlock (thread_mutex))
+          mutex_bugcheck ("mutex unlock", mutex_state);
+        ptr = thread->thread_stall;
+	    
+      /* RDT: 20230620 - A thread vai entrar em estado de espera novamente. Esta claro que é 
+         uma estratégia de um scheduler 'distribuído'. */
+      ISC_event_wait (1, &ptr, &value, 0, NULL_PTR, NULL_PTR);
+      if (mutex_state = THD_mutex_lock (thread_mutex))
+        mutex_bugcheck ("mutex lock", mutex_state);
+    }
+
+  /* Explicitly disable AST delivery for active thread */
+  ast_disable();
 }
 
 static void stall_ast (

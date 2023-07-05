@@ -1054,13 +1054,15 @@ return port;
 /* RDT: 20230704 - Cria recursos para estabelecer conexão com o servidor. */	
 
 PORT DLL_EXPORT INET_connect (
-  TEXT	 *name,
-  PACKET *packet,
-  STATUS *status_vector,
-  USHORT flag,
-  SCHAR  *dpb, 
+  TEXT    *name,
+  PACKET  *packet,
+  STATUS  *status_vector,
+  USHORT  flag,
+  SCHAR   *dpb, 
   SSHORT  dpb_length)
 {
+/* RDT: 20230616 - Esta função é chamada a partir de inet_connect_wait_thread (WinMain), no ambiente Windows. 
+   A descrição abaixo, dá uma idéia do que ela faz. */    
 /**************************************
  *
  *	I N E T _ c o n n e c t
@@ -1102,7 +1104,6 @@ PORT DLL_EXPORT INET_connect (
       INET_force_error = atoi (p);
   }
 #endif
-
   port = alloc_port (NULL_PTR);
   port->port_status_vector = status_vector;
   REMOTE_get_timeout_params (port, dpb, dpb_length);
@@ -1157,7 +1158,6 @@ PORT DLL_EXPORT INET_connect (
   else
     address.sin_addr.s_addr = INADDR_ANY;
 #else
-
 #ifdef WINDOWS_ONLY
   if (initWSA(port))
     return NULL;
@@ -1167,14 +1167,14 @@ PORT DLL_EXPORT INET_connect (
   THREAD_EXIT;
   host = GETHOSTBYNAME (name);
 
-/* On Windows NT/9x, gethostbyname can only accomodate
- * 1 call at a time.  In this case it returns the error
- * WSAEINPROGRESS. On UNIX systems, this call may not succeed
- * because of a temporary error.  In this case, it returns
- * h_error set to TRY_AGAIN.  When these errors occur,
- * retry the operation a few times.
- * NOTE: This still does not guarantee success, but helps.
- */
+  /* On Windows NT/9x, gethostbyname can only accomodate
+   * 1 call at a time.  In this case it returns the error
+   * WSAEINPROGRESS. On UNIX systems, this call may not succeed
+   * because of a temporary error.  In this case, it returns
+   * h_error set to TRY_AGAIN.  When these errors occur,
+   * retry the operation a few times.
+   * NOTE: This still does not guarantee success, but helps.
+  */
   if (!host)
   {
     int retry;
@@ -1194,16 +1194,24 @@ PORT DLL_EXPORT INET_connect (
       "INET/INET_connect: gethostbyname failed, error code = %d", 
       H_ERRNO);
     gds__log (msg, NULL_PTR);
-    inet_gen_error (port,isc_network_error,isc_arg_string,port->port_connection->str_data,isc_arg_gds,isc_net_lookup_err,
-      isc_arg_gds,isc_host_unknown,0);
+    inet_gen_error (port,
+      isc_network_error,
+      isc_arg_string, 
+      port->port_connection->str_data, 
+      isc_arg_gds, 
+      isc_net_lookup_err,
+      isc_arg_gds,
+      isc_host_unknown, 
+      0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	
     return NULL;
   }
 
-/* Copy info from host struct before making another socket call for
-   Winsock compatibility */
+  /* Copy info from host struct before making another socket call for
+     Winsock compatibility */
+
   address.sin_family = host->h_addrtype;
   if (packet)
     inet_copy (host->h_addr, &address.sin_addr, sizeof (address.sin_addr));
@@ -1213,12 +1221,13 @@ PORT DLL_EXPORT INET_connect (
   THREAD_EXIT;
   service = GETSERVBYNAME (protocol, "tcp");
 #ifdef WIN_NT
-/* On Windows NT/9x, getservbyname can only accomodate
- * 1 call at a time.  In this case it returns the error
- * WSAEINPROGRESS. 
- * If this happens, retry the operation a few times.
- * NOTE: This still does not guarantee success, but helps.
- */
+
+  /* On Windows NT/9x, getservbyname can only accomodate
+   * 1 call at a time.  In this case it returns the error
+   * WSAEINPROGRESS. 
+   * If this happens, retry the operation a few times.
+   * NOTE: This still does not guarantee success, but helps.
+   */
   if (!service)
   {
     int retry;
@@ -1235,10 +1244,23 @@ PORT DLL_EXPORT INET_connect (
   THREAD_ENTER;
   if (!service)
   {
-    sprintf (msg,"INET/INET_connect: getservbyname failed, error code = %d",H_ERRNO);
+    sprintf (msg, 
+      "INET/INET_connect: getservbyname failed, error code = %d", 
+      H_ERRNO);
     gds__log (msg, NULL_PTR);
-    inet_gen_error (port,isc_network_error,isc_arg_string,port->port_connection->str_data,isc_arg_gds,isc_net_lookup_err, 
-      isc_arg_gds,isc_service_unknown,isc_arg_string,protocol,isc_arg_string,"tcp",0);
+    inet_gen_error (port, 
+      isc_network_error,
+      isc_arg_string, 
+      port->port_connection->str_data, 
+      isc_arg_gds,
+      isc_net_lookup_err, 
+      isc_arg_gds, 
+      isc_service_unknown,
+      isc_arg_string, 
+      protocol,
+      isc_arg_string, 
+      "tcp", 
+      0);
 #ifdef WINDOWS_ONLY
     NetworkLibraryCleanup ();
 #endif /* WINDOWS_ONLY */	 
@@ -1291,8 +1313,7 @@ PORT DLL_EXPORT INET_connect (
     }
   }
 
-/* We're a server, so wait for a host to show up */
-
+  /* We're a server, so wait for a host to show up */
   if (flag & SRVR_multi_client)
   {
     int optlen;
@@ -1304,7 +1325,7 @@ PORT DLL_EXPORT INET_connect (
     optval = TRUE;
     n = setsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_REUSEADDR,
       (SCHAR*) &optval, sizeof (optval));
-	  
+
     if (n == -1)
     {
       inet_error (port, "setsockopt REUSE", isc_net_connect_listen_err, ERRNO);
@@ -1324,7 +1345,7 @@ PORT DLL_EXPORT INET_connect (
 
     n = setsockopt ((SOCKET) port->port_handle, SOL_SOCKET, SO_LINGER,
       (SCHAR*) &lingerInfo, sizeof (lingerInfo));
-	  
+
     if (n == -1)
     {
       inet_error (port, "setsockopt LINGER", isc_net_connect_listen_err, ERRNO);
@@ -1367,7 +1388,7 @@ PORT DLL_EXPORT INET_connect (
     THREAD_EXIT;
     l = sizeof (address);
     s = accept ((SOCKET) port->port_handle, 
-		(struct sockaddr *) &address, &l);
+      (struct sockaddr *) &address, &l);
     if (s == INVALID_SOCKET)
     {
       THREAD_ENTER;
@@ -1388,15 +1409,15 @@ PORT DLL_EXPORT INET_connect (
       return port;
     }
 
-    THREAD_ENTER;
+   THREAD_ENTER;
     SOCLOSE (s);
   }
 }
 
 PORT INET_reconnect (
-    HANDLE	handle,
-    TEXT	*name,
-    STATUS	*status_vector)
+  HANDLE	handle,
+  TEXT	*name,
+  STATUS	*status_vector)
 {
 /**************************************
  *
