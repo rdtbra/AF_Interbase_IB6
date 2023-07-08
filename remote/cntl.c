@@ -161,7 +161,8 @@ return new_thread;
       parse_switch (p, &flag);
   }
 
-  /* RDT: 20230704 - Aqui cria um evento associando a main_handler. */
+  /* RDT: 20230704 - Aqui cria um evento associando a main_handler. main_handler é, para o ponto onde estou analisando
+     start_connections_thread. */
   if (report_status (SERVICE_START_PENDING, NO_ERROR, 1, 3000) &&
      (stop_event_handle = CreateEvent (NULL, TRUE, FALSE, NULL)) != NULL &&
       report_status (SERVICE_START_PENDING, NO_ERROR, 2, 3000) &&
