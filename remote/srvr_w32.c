@@ -118,7 +118,7 @@ static TEXT             protocol_wnet [128];
 static USHORT           server_flag;
 
 /* RDT: 20230704 - Tabela com a chamada a função que representará nossos serviços no Windows. */
-static SERVICE_TABLE_ENTRY      service_table [] = {
+static SERVICE_TABLE_ENTRY service_table [] = {
   REMOTE_SERVICE, (LPSERVICE_MAIN_FUNCTION) CNTL_main_thread,
   NULL, NULL
 };
@@ -131,10 +131,10 @@ static int xnet_server_set = FALSE;
 
 /* RDT: 20230704 - Ponto de entrada do servidor Windows. */
 int WINAPI WinMain (
-	HINSTANCE       hThisInst,
-	HINSTANCE       hPrevInst,
-	LPSTR           lpszArgs,
-	int             nWndMode)
+  HINSTANCE hThisInst,
+  HINSTANCE hPrevInst,
+  LPSTR     lpszArgs,
+  int       nWndMode)
 {
 /**************************************
  *
@@ -162,7 +162,7 @@ int WINAPI WinMain (
   protocol_inet [0] = 0;
   protocol_wnet [0] = 0;
 
-  connection_handle = parse_args(lpsz	Args, &server_flag);
+  connection_handle = parse_args(lpsz Args, &server_flag);
 
   if (ISC_get_ostype()) /* True - NT, False - Win95 */
     server_flag |= (SRVR_inet | SRVR_pipe);
@@ -174,15 +174,21 @@ int WINAPI WinMain (
   /* Initialize the service and
       Setup sig_mutex for the process
   */
-  ISC_signal_init ();
+  ISC_signal_init();
   ISC_enter();
-	
+
+  /* RDT: 20230707 - Esta é uma operação bitwise. Entende-se que server_flag é um flag com as opções do servidor. 
+     SRVR_non_service seria um flag que indica que o servidor não está executando como serviço. Precisamos prestar
+     atenção. Temos uma negação da situação em questão, ou seja, entende-se que o if quer saber se é "SRVR_service". */
   if (!(server_flag & SRVR_non_service))
   {
-    /* RDT: 20230704 - Esta função preparará threads de comunicação, via serviços no Windows. */
-    CNTL_init ((FPTR_VOID) start_connections_thread, REMOTE_SERVICE);
-    /* RDT: 20230704 - Iniciar os serviços. A tabela de serviços está aqui: service_table - https://github.com/rdtbra/IB6/blob/2f31890af0f69e039c53b5a769f073c57c85edda/remote/srvr_w32.c#L121. */
-    if (!StartServiceCtrlDispatcher (service_table))
+    /* RDT: 20230704 - Esta função preparará threads de comunicação, via serviços no Windows.
+       É interessante verificar se CNTL_init é síncrona. Entendo que estamos criando threads de
+       conexão. */
+    CNTL_init((FPTR_VOID) start_connections_thread, REMOTE_SERVICE);
+    /* RDT: 20230704 - Iniciar os serviços. A tabela de serviços é definida na variável service_table.
+       Nesta tabela está parametrizada a função CNTL_main_thread. */
+    if (!StartServiceCtrlDispatcher(service_table))
     {
       if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
         CNTL_shutdown_service ("StartServiceCtrlDispatcher failed");
