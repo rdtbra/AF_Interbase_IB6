@@ -217,8 +217,9 @@ THREAD_EXIT;
 
 #ifndef mpexl
 void SRVR_multi_thread (
-    PORT	main_port,
-    USHORT	flags)
+  PORT main_port,
+  USHORT flags)
+/* RDT: 20230708 - Servidor multi-threaded. */
 {
 /**************************************
  *
@@ -231,287 +232,267 @@ void SRVR_multi_thread (
  *
  **************************************/
 #if (defined PC_PLATFORM && !defined NETWARE_386)
-
-/* for PC router, no multithreading is available */
-
-return;
-
+  /* for PC router, no multithreading is available */
+  return;
 #else
-
-REQ	request=NULL, active;
-VOLATILE PORT	port = NULL;
-SLONG	pending_requests;
-P_OP	operation;
+  REQ request=NULL, active;
+  VOLATILE PORT port = NULL;
+  SLONG pending_requests;
+  P_OP operation;
 #ifdef DEV_BUILD
 #ifdef DEBUG
-SSHORT  request_count=0;
+  SSHORT request_count=0;
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
-struct trdb thd_context, *trdb;
-JMP_BUF	env, inner_env;
-STATUS  status_vector[20];
+  struct trdb thd_context, *trdb;
+  JMP_BUF env, inner_env;
+  STATUS status_vector[20];
 
-gds__thread_enable (-1);
+  gds__thread_enable (-1);
+  ISC_event_init(thread_event, 0, 0);
+  THREAD_ENTER;
+  SET_THREAD_DATA;
+  trdb->trdb_setjmp = env;
+  trdb->trdb_status_vector = status_vector;
 
-ISC_event_init (thread_event, 0, 0);
-THREAD_ENTER;
-
-SET_THREAD_DATA;
-trdb->trdb_setjmp = env;
-trdb->trdb_status_vector = status_vector;
-
-if (SETJMP(env)) 
-    {
+  if (SETJMP(env)) 
+  {
     /* Some kind of unhandled error occured during server setup.  In lieu
      * of anything we CAN do, log something (and we might be so hosed
      * we can't log anything) and give up.
      * The likely error here is out-of-memory.
      */
     gds__log ("SRVR_multi_thread: error during startup, shutting down");
-    
     RESTORE_THREAD_DATA;
     THREAD_EXIT;
     return;
-    }
+  }
 
-set_server (main_port, flags);
+  set_server (main_port, flags);
 
-/* We need to have this error handler as there is so much underlaying code
- * that is depending on it being there.  The expected failure
- * that can occur in the call paths from here is out-of-memory
- * and it is unknown if other failures can get us here
- * Failures can occur from set_server as well as RECEIVE
- *
- * Note that if a failure DOES occur, we reenter the loop and try to continue
- * operations.  This is important as this is the main receive loop for
- * new incoming requests, if we exit here no new requests can come to the
- * server.
- */
+  /* We need to have this error handler as there is so much underlaying code
+   * that is depending on it being there.  The expected failure
+   * that can occur in the call paths from here is out-of-memory
+   * and it is unknown if other failures can get us here
+   * Failures can occur from set_server as well as RECEIVE
+   *
+   * Note that if a failure DOES occur, we reenter the loop and try to continue
+   * operations.  This is important as this is the main receive loop for
+   * new incoming requests, if we exit here no new requests can come to the
+   * server.
+   */
 
-if (SETJMP (env))
-     {
-     /* If we got as far as having a port allocated before the error, disconnect it
-      * gracefully.
-      */ 
+  if (SETJMP (env))
+  {
+    /* If we got as far as having a port allocated before the error, disconnect it
+     * gracefully.
+     */ 
     if (port != NULL)
-	{
+    {
 #ifdef DEV_BUILD
 #ifdef DEBUG
-	ConsolePrintf("%%ISERVER-F-NOPORT, no port in a storm\r\n");
+      ConsolePrintf("%%ISERVER-F-NOPORT, no port in a storm\r\n");
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
-	gds__log ("SRVR_multi_thread: forcefully disconnecting a port");
+      gds__log ("SRVR_multi_thread: forcefully disconnecting a port");
 
-	/* To handle recursion within the error handler */
-	trdb->trdb_setjmp = inner_env;
-	if (SETJMP (inner_env))
-	    {
-	    disconnect (port, NULL, NULL);
-	    port = NULL;
-	    }
-	else
-	    {
-	    /* If we have a port, request really should be non-null, but just in case ... */
-	    if (request != NULL)
-		{
-		/* Send client a real status indication of why we disconnected them */
-		/* Note that send_response() can post errors that wind up in this same handler */
+      /* To handle recursion within the error handler */
+      trdb->trdb_setjmp = inner_env;
+      if (SETJMP (inner_env))
+      {
+        disconnect (port, NULL, NULL);
+        port = NULL;
+      }
+      else
+      {
+        /* If we have a port, request really should be non-null, but just in case ... */
+        if (request != NULL)
+        {
+          /* Send client a real status indication of why we disconnected them */
+          /* Note that send_response() can post errors that wind up in this same handler */
 #ifdef DEV_BUILD
 #ifdef DEBUG
-	ConsolePrintf("%%ISERVER-F-NOMEM, virtual memory exhausted\r\n");
+          ConsolePrintf("%%ISERVER-F-NOMEM, virtual memory exhausted\r\n");
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
-		send_response (port, &request->req_send, 0, 0,
-			       status_vector);
-		disconnect (port, &request->req_send,
-			   &request->req_receive);
-		}
-	     else
-		{
-		/* Can't tell the client much, just make 'em go away.  Their side should detect
-		 * a network error
-		 */
-		disconnect (port, NULL, NULL);
-		}
-	    port = NULL;
- 	    }
-	trdb->trdb_setjmp = env;
-	}
+          send_response(port, &request->req_send, 0, 0, status_vector);
+          disconnect (port, &request->req_send, &request->req_receive);
+        }
+        else
+        {
+          /* Can't tell the client much, just make 'em go away.  Their side should detect
+           * a network error
+           */
+          disconnect (port, NULL, NULL);
+        }
+        port = NULL;
+      }
+      trdb->trdb_setjmp = env;
+    }
 
     /* There was an error in the processing of the request, if we have allocated
      * a request, free it up and continue.
      */
     if (request != NULL)
-	{
-	request->req_next = free_requests;
-	free_requests = request;
-	request = NULL;
-	}
-    }
-
-/* When this loop exits, the server will no longer receive requests */
-while (TRUE)
     {
+      request->req_next = free_requests;
+      free_requests = request;
+      request = NULL;
+    }
+  }
+
+  /* When this loop exits, the server will no longer receive requests */
+  while (TRUE)
+  {
     port = NULL;
 
     /* Allocate a memory block to store the request in */
-
     if (request = free_requests)
-	free_requests = request->req_next;
+      free_requests = request->req_next;
     else
-        {
-    	/* No block on the free list - allocate some new memory */
-
-	if (request = (REQ) gds__alloc ((SLONG) sizeof (struct req)))
-	    {
-	    zap_packet (&request->req_send, TRUE);
-	    zap_packet (&request->req_receive, TRUE);
+    {
+      /* No block on the free list - allocate some new memory */
+      if (request = (REQ) gds__alloc ((SLONG) sizeof (struct req)))
+      {
+        zap_packet (&request->req_send, TRUE);
+        zap_packet (&request->req_receive, TRUE);
 #ifdef REMOTE_DEBUG_MEMORY
-            ib_printf ("SRVR_multi_thread         allocate request %x\n", request);
+        ib_printf ("SRVR_multi_thread         allocate request %x\n", request);
 #endif
-	    }
-	else
-	    {
-	    /* System is out of memory, let's delay processing this
-	       request and hope another thread will free memory or
-	       request blocks that we can then use. */
-
-	    THREAD_EXIT;
-	    THREAD_SLEEP(1*1000);
-	    THREAD_ENTER;
-	    continue;
-	    }
-        }
+      }
+      else
+      {
+        /* System is out of memory, let's delay processing this
+           request and hope another thread will free memory or
+           request blocks that we can then use. */
+        THREAD_EXIT;
+        THREAD_SLEEP(1*1000);
+        THREAD_ENTER;
+        continue;
+      }
+    }
 
 #ifdef DEV_BUILD
 #ifdef DEBUG
-    if((request_count++ % 4) == 0)
-	{
-	LONGJMP (trdb->trdb_setjmp, gds__virmemexh);
-	}
+    if ((request_count++ % 4) == 0)
+    {
+      LONGJMP (trdb->trdb_setjmp, gds__virmemexh);
+    }
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
 
     if (request)
-	{
-	request->req_next = NULL;
-	request->req_chain = NULL;
+    {
+      request->req_next = NULL;
+      request->req_chain = NULL;
 
-	/* We have a request block - now get some information to stick into it */
-	if (!(port = RECEIVE (main_port, &request->req_receive)))
-	    {
-	    gds__log ("SRVR_multi_thread/RECEIVE: error on main_port, shutting down");
-	    THREAD_EXIT;
-	    RESTORE_THREAD_DATA;
-	    return;
-	    }
+      /* We have a request block - now get some information to stick into it */
+      if (!(port = RECEIVE (main_port, &request->req_receive)))
+      {
+        gds__log ("SRVR_multi_thread/RECEIVE: error on main_port, shutting down");
+        THREAD_EXIT;
+        RESTORE_THREAD_DATA;
+        return;
+      }
 	
-	request->req_port = port;
-	operation = request->req_receive.p_operation;
+      request->req_port = port;
+      operation = request->req_receive.p_operation;
 
 #ifdef DEV_BUILD
 #ifdef DEBUG
-	if((request_count % 5) == 0)
-	    {
-	    LONGJMP (trdb->trdb_setjmp, gds__virmemexh);
-	    }
+      if ((request_count % 5) == 0)
+      {
+        LONGJMP (trdb->trdb_setjmp, gds__virmemexh);
+      }
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
 
-	/* If port has an active request, link this one in */
-
-	for (active = active_requests; active;
-	     active = active->req_next)
-	    if (active->req_port == port)
-		{
-		/* Don't queue a dummy keepalive packet if there is
-		   an active request running on this port. */
-
-		if (operation == op_dummy)
-		    {
-		    request->req_next = free_requests;
-		    free_requests = request;
-		    goto finished;
-		    }
-                port->port_requests_queued++;
-		append_request_chain (request, &active->req_chain);
+      /* If port has an active request, link this one in */
+      for (active = active_requests; active; active = active->req_next)
+        if (active->req_port == port)
+        {
+          /* Don't queue a dummy keepalive packet if there is
+             an active request running on this port. */
+          if (operation == op_dummy)
+          {
+            request->req_next = free_requests;
+            free_requests = request;
+            goto finished;
+          }
+          port->port_requests_queued++;
+          append_request_chain (request, &active->req_chain);
 #ifdef REMOTE_DEBUG_MEMORY
-        	ib_printf ("SRVR_multi_thread    ACTIVE     request_queued %d\n", port->port_requests_queued);
-        	ib_fflush (ib_stdout);
+          ib_printf ("SRVR_multi_thread    ACTIVE     request_queued %d\n", port->port_requests_queued);
+          ib_fflush (ib_stdout);
 #endif
 #ifdef CANCEL_OPERATION
-		if (operation == op_exit || operation == op_disconnect)
-		    cancel_operation (port);
+          if (operation == op_exit || operation == op_disconnect)
+            cancel_operation (port);
 #endif
-		goto finished;
-		}
+          goto finished;
+        }
 
-	/* If port has an pending request, link this one in */
-
-	for (active = request_que; active; active = active->req_next)
-	    if (active->req_port == port)
-		{
-		/* Don't queue a dummy keepalive packet if there is
-		   a pending request against this port. */
-
-		if (operation == op_dummy)
-		    {
-		    request->req_next = free_requests;
-		    free_requests = request;
-		    goto finished;
-		    }
-                port->port_requests_queued++;
-		append_request_chain (request, &active->req_chain);
+      /* If port has an pending request, link this one in */
+      for (active = request_que; active; active = active->req_next)
+        if (active->req_port == port)
+        {
+          /* Don't queue a dummy keepalive packet if there is
+	     a pending request against this port. */
+          if (operation == op_dummy)
+          {
+            request->req_next = free_requests;
+            free_requests = request;
+            goto finished;
+          }
+          port->port_requests_queued++;
+          append_request_chain (request, &active->req_chain);
 #ifdef REMOTE_DEBUG_MEMORY
-        	ib_printf ("SRVR_multi_thread    PENDING     request_queued %d\n", port->port_requests_queued);
-        	ib_fflush (ib_stdout);
+          ib_printf ("SRVR_multi_thread    PENDING     request_queued %d\n", port->port_requests_queued);
+          ib_fflush (ib_stdout);
 #endif
 #ifdef CANCEL_OPERATION
-		if (operation == op_exit || operation == op_disconnect)
-		    cancel_operation (port);
+          if (operation == op_exit || operation == op_disconnect)
+            cancel_operation (port);
 #endif
-		goto finished;
-		}
+          goto finished;
+        }
 
-	/* No port to assign request to, add it to the waiting queue and wake up a
+        /* No port to assign request to, add it to the waiting queue and wake up a]
 	 * thread to handle it 
-	 */
-	pending_requests = append_request_next (request, &request_que);
+         */
+        pending_requests = append_request_next (request, &request_que);
         port->port_requests_queued++;
 #ifdef REMOTE_DEBUG_MEMORY
         ib_printf ("SRVR_multi_thread    APPEND_PENDING     request_queued %d\n", port->port_requests_queued);
         ib_fflush (ib_stdout);
 #endif
 
-	/* NOTE: we really *should* have something that limits how many
-	 * total threads we allow in the system.  As each thread will
-	 * eat up memory that other threads could use to complete their work
-	 */
-	/* NOTE: The setting up of extra_threads variable is done below to let waiting
-	         threads know if their services may be needed for the current set
-	         of requests.  Otherwise, some idle threads may leave the system 
-	         freeing up valuable memory.
-	 */
-	extra_threads = threads_waiting - pending_requests;
-	if (extra_threads < 0)
-	    {
-	    gds__thread_start ((FPTR_INT) thread, (void*) flags,
-			       THREAD_medium, THREAD_ast, NULL_PTR);
-	    }
+        /* NOTE: we really *should* have something that limits how many
+         * total threads we allow in the system.  As each thread will
+         * eat up memory that other threads could use to complete their work
+         */
+        /* NOTE: The setting up of extra_threads variable is done below to let waiting
+           threads know if their services may be needed for the current set
+           of requests.  Otherwise, some idle threads may leave the system 
+           freeing up valuable memory.
+         */
+        extra_threads = threads_waiting - pending_requests;
+        if (extra_threads < 0)
+        {
+          gds__thread_start ((FPTR_INT) thread, (void*) flags, THREAD_medium, THREAD_ast, NULL_PTR);
+        }
 
-	ISC_event_post (thread_event);
-	}
+        ISC_event_post (thread_event);
+    }
     finished:
-    ;
+      ;
   }
-/* We should never get to this point */
-
-THREAD_EXIT;
-
+  /* We should never get to this point */
+  THREAD_EXIT;
 #endif
 
-/* Why isn't this inside the #endif above? */
-RESTORE_THREAD_DATA;
+  /* Why isn't this inside the #endif above? */
+  RESTORE_THREAD_DATA;
 }
 #endif
 
