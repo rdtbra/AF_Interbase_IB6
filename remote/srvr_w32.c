@@ -187,7 +187,11 @@ int WINAPI WinMain (
        conexão. */
     CNTL_init((FPTR_VOID) start_connections_thread, REMOTE_SERVICE);
     /* RDT: 20230704 - Iniciar os serviços. A tabela de serviços é definida na variável service_table.
-       Nesta tabela está parametrizada a função CNTL_main_thread. */
+       Nesta tabela está parametrizada a função CNTL_main_thread. 
+       CNTL_init está passando um ponteiro para a função start_connections_thread para a variável
+       main_handler. CNTL_main_thread será executado via StartServiceCtrlDispatcher,
+       e internamente usará main_thread para executar "start_connections_thread". Por isso iniciei
+       a análise desta função. */
     if (!StartServiceCtrlDispatcher(service_table))
     {
       if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
