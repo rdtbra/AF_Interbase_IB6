@@ -1409,7 +1409,7 @@ PORT DLL_EXPORT INET_connect (
       return port;
     }
 
-   THREAD_ENTER;
+    THREAD_ENTER;
     SOCLOSE (s);
   }
 }
