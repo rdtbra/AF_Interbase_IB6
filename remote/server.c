@@ -458,7 +458,7 @@ void SRVR_multi_thread (
         }
 
         /* No port to assign request to, add it to the waiting queue and wake up a]
-	 * thread to handle it 
+         * thread to handle it 
          */
         pending_requests = append_request_next (request, &request_que);
         port->port_requests_queued++;
