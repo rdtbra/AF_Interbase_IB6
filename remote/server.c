@@ -437,7 +437,7 @@ void SRVR_multi_thread (
         if (active->req_port == port)
         {
           /* Don't queue a dummy keepalive packet if there is
-	     a pending request against this port. */
+             a pending request against this port. */
           if (operation == op_dummy)
           {
             request->req_next = free_requests;
