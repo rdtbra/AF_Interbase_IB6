@@ -457,32 +457,32 @@ void SRVR_multi_thread (
           goto finished;
         }
 
-        /* No port to assign request to, add it to the waiting queue and wake up a]
-         * thread to handle it 
-         */
-        pending_requests = append_request_next (request, &request_que);
-        port->port_requests_queued++;
+      /* No port to assign request to, add it to the waiting queue and wake up a]
+       * thread to handle it 
+       */
+      pending_requests = append_request_next (request, &request_que);
+      port->port_requests_queued++;
 #ifdef REMOTE_DEBUG_MEMORY
-        ib_printf ("SRVR_multi_thread    APPEND_PENDING     request_queued %d\n", port->port_requests_queued);
-        ib_fflush (ib_stdout);
+      ib_printf ("SRVR_multi_thread    APPEND_PENDING     request_queued %d\n", port->port_requests_queued);
+      ib_fflush (ib_stdout);
 #endif
 
-        /* NOTE: we really *should* have something that limits how many
-         * total threads we allow in the system.  As each thread will
-         * eat up memory that other threads could use to complete their work
-         */
-        /* NOTE: The setting up of extra_threads variable is done below to let waiting
-           threads know if their services may be needed for the current set
-           of requests.  Otherwise, some idle threads may leave the system 
-           freeing up valuable memory.
-         */
-        extra_threads = threads_waiting - pending_requests;
-        if (extra_threads < 0)
-        {
-          gds__thread_start ((FPTR_INT) thread, (void*) flags, THREAD_medium, THREAD_ast, NULL_PTR);
-        }
+      /* NOTE: we really *should* have something that limits how many
+       * total threads we allow in the system.  As each thread will
+       * eat up memory that other threads could use to complete their work
+       */
+      /* NOTE: The setting up of extra_threads variable is done below to let waiting
+         threads know if their services may be needed for the current set
+         of requests.  Otherwise, some idle threads may leave the system 
+         freeing up valuable memory.
+       */
+      extra_threads = threads_waiting - pending_requests;
+      if (extra_threads < 0)
+      {
+        gds__thread_start ((FPTR_INT) thread, (void*) flags, THREAD_medium, THREAD_ast, NULL_PTR);
+      }
 
-        ISC_event_post (thread_event);
+      ISC_event_post (thread_event);
     }
     finished:
       ;
