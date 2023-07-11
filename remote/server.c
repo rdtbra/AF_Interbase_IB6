@@ -648,8 +648,9 @@ return send_response (port, send, object, 0, status_vector);
 }
 
 static SLONG append_request_chain (
-    REQ		request,
-    REQ		*que)
+  REQ request,
+  REQ *que)
+/* RDT: 20230710 - Inclui requisições em uma cadeia (fila específica). */
 {
 /**************************************
  *
@@ -663,19 +664,19 @@ static SLONG append_request_chain (
  *	Return count of pending requests.
  *
  **************************************/
-SLONG	requests;
+  SLONG requests;
 
-for (requests = 1; *que; que = &(*que)->req_chain)
+  for (requests = 1; *que; que = &(*que)->req_chain)
     ++requests;
+  *que = request;
 
-*que = request;
-
-return requests;
+  return requests;
 }
 
 static SLONG append_request_next (
-    REQ		request,
-    REQ		*que)
+  REQ request,
+  REQ *que)
+/* RDT: 20230710 - Inclui requisições na posição next de uma cadeia (fila específica). */
 {
 /**************************************
  *
@@ -689,14 +690,13 @@ static SLONG append_request_next (
  *	Return count of pending requests.
  *
  **************************************/
-SLONG	requests;
+  SLONG requests;
 
-for (requests = 1; *que; que = &(*que)->req_next)
+  for (requests = 1; *que; que = &(*que)->req_next)
     ++requests;
+  *que = request;
 
-*que = request;
-
-return requests;
+  return requests;
 }
 
 static STATUS attach_database (
