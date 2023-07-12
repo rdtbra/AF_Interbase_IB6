@@ -4426,8 +4426,9 @@ return send_response (port, send, 0, 0, status_vector);
 }
 
 void set_server (
-    PORT	port,
-    USHORT	flags)
+  PORT port,
+  USHORT flags)
+/* RDT: 20230711 - Procura o servidor para uma determinada porta (o que quer que isso quer dizer), se não encontra cria um. */
 {
 /**************************************
  *
@@ -4441,23 +4442,24 @@ void set_server (
  *	create it.
  *
  **************************************/
-SRVR	server;
+  SRVR server;
 
-for (server = servers; server; server = server->srvr_next)
+  for (server = servers; server; server = server->srvr_next)
     if (port->port_type == server->srvr_port_type)
-	break;
+      break;
 
-if (!server)
-    {
+  if (!server)
+  {
     server = (SRVR) ALLR_alloc ((SLONG) sizeof (struct srvr));
     server->srvr_next = servers;
     servers = server;
     server->srvr_port_type = port->port_type;
     server->srvr_parent_port = port;
     server->srvr_flags = flags;
-    }
+  }
 
-port->port_server = server;
+  /* RDT: 20230711 - Associa o server encontrado, ou o novo a "porta". */
+  port->port_server = server;
 }
 
 static STATUS start (
