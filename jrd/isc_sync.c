@@ -2137,9 +2137,10 @@ CloseHandle ((HANDLE) event->event_handle);
 }
 
 int DLL_EXPORT ISC_event_init (
-    EVENT	event,
-    int		type,
-    int		semnum)
+  EVENT event,
+  int type,
+  int semnum)
+/* RDT: 20230712 - Inicializa um evento! */
 {
 /**************************************
  *
@@ -2152,15 +2153,15 @@ int DLL_EXPORT ISC_event_init (
  *
  **************************************/
 
-event->event_pid = process_id = getpid();
-event->event_count = 0;
-event->event_type = type;
-event->event_shared = NULL;
+  event->event_pid = process_id = getpid();
+  event->event_count = 0;
+  event->event_type = type;
+  event->event_shared = NULL;
 
-if (!(event->event_handle = ISC_make_signal (TRUE, TRUE, process_id, type)))
+  if (!(event->event_handle = ISC_make_signal (TRUE, TRUE, process_id, type)))
     return FALSE;
 
-return TRUE;
+  return TRUE;
 }
 
 int ISC_event_init_shared (
@@ -2789,10 +2790,13 @@ exit (3);
 
 #ifdef WIN_NT
 void *ISC_make_signal (
-    BOOLEAN	create_flag,
-    BOOLEAN	manual_reset,
-    int		process_id,
-    int		signal_number)
+  BOOLEAN create_flag,
+  BOOLEAN manual_reset,
+  int process_id,
+  int signal_number)
+/* RDT: 20230712 - Cria ou abre um evento do Windows, usando número de sinal e pid para nomear objeto. 
+   No Unix/Linux o conceito de sinal deve ter prevalecido, enquanto que no Windows, 
+   usa-se recurso de sincronismo para obter o mesmo resultado. */
 {
 /**************************************
  *
@@ -2806,13 +2810,16 @@ void *ISC_make_signal (
  *	in naming the object.
  *
  **************************************/
-TEXT	event_name [64];
+  TEXT event_name [64];
 
-if (!signal_number)
+  if (!signal_number)
     return CreateEvent (NULL, manual_reset, FALSE, NULL);
 
-sprintf (event_name, "_interbase_process%u_signal%d", process_id, signal_number);
-return (create_flag) ?
+  /* RDT: 20230712 - Como comentado, cria-se o nome do objeto usando pid e "número do sinal". */
+  sprintf (event_name, "_interbase_process%u_signal%d", process_id, signal_number);
+  /* RDT: 20230712 - Decide se criará o evento ou se vai abrir evento existente. create_flag é um 
+     dos parâmetros da função. */
+  return (create_flag) ?
     CreateEvent (ISC_get_security_desc(), manual_reset, FALSE, event_name) :
     OpenEvent (EVENT_ALL_ACCESS, TRUE, event_name);
 }
