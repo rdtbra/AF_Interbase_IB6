@@ -2812,6 +2812,9 @@ void *ISC_make_signal (
  **************************************/
   TEXT event_name [64];
 
+  /* RDT: 20230712 - Um atalho! Quando ISC_make_signal está sendo chamada de ISC_event_init, por intermédio de SRVR_multi_thread, 
+     a chamada é feita com TRUE, TRUE, pid, 0), pois lá o valor de signal está sendo passado através
+     da variável type. type vem de SRVR_multi_thread como 0. :) Dessa maneira, CreateEvent será chamada com a forma abaixo! */
   if (!signal_number)
     return CreateEvent (NULL, manual_reset, FALSE, NULL);
 
