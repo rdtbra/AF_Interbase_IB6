@@ -312,15 +312,16 @@ typedef struct sh_mem {
 #ifdef WIN_NT
 #define MTX_STRUCTURE_DEFINED
 typedef struct mtx {
-    void	*mtx_handle;
+  void *mtx_handle;
 } MTX_T, *MTX;
 
+/* RDT: 20230712 - A estrutura do evento no Windows NT. */
 typedef struct event {
-    SLONG		event_pid;
-    SLONG		event_count;
-    SLONG		event_type;
-    void		*event_handle;
-    struct event	*event_shared;
+  SLONG event_pid;
+  SLONG event_count;
+  SLONG event_type;
+  void *event_handle;
+  struct event *event_shared;
 } EVENT_T, *EVENT;
 
 #define SH_MEM_STRUCTURE_DEFINED
