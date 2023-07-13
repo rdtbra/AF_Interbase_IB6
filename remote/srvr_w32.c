@@ -314,6 +314,9 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
      no 'scheduler' do Interbase (a lista circular), e aguardará a ativação da thread. Só
      aí, após retornar de THREAD_ENTER, INET_connect será executada. */
   THREAD_ENTER;
+  /* RDT: 20230713 - port será criada a partir de INET_connect. Mais abaixo usaremos port na chamada a 
+     SRVR_multi_thread, que internamente será referenciada como main_port. A investigação começa a ligar
+     algumas entidades: main_port, request, server! */
   port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
     NULL_PTR, 0); /* RDT: 20230713 - INET_connect -> https://github.com/rdtbra/IB6/blob/main/remote/inet.c#L1056 */
   THREAD_EXIT;
