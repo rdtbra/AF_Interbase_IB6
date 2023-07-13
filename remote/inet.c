@@ -1054,12 +1054,12 @@ return port;
 /* RDT: 20230704 - Cria recursos para estabelecer conexão com o servidor. */	
 
 PORT DLL_EXPORT INET_connect (
-  TEXT    *name,
-  PACKET  *packet,
-  STATUS  *status_vector,
-  USHORT  flag,
-  SCHAR   *dpb, 
-  SSHORT  dpb_length)
+  TEXT *name,
+  PACKET *packet,
+  STATUS *status_vector,
+  USHORT flag,
+  SCHAR *dpb, 
+  SSHORT dpb_length)
 {
 /* RDT: 20230616 - Esta função é chamada a partir de inet_connect_wait_thread (WinMain), no ambiente Windows. 
    A descrição abaixo, dá uma idéia do que ela faz. */    
