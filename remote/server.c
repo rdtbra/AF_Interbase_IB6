@@ -392,9 +392,12 @@ void SRVR_multi_thread (
       /* We have a request block - now get some information to stick into it */
       /* RDT: 20230713 - RECEIVE é uma macro, definida em remote.h: #define RECEIVE(port, pckt)	(*port->port_receive_packet)(port, pckt). 
          Estamos chamando port_receive_packet da estrutura port, no caso main_port. Esta chamada deve retornar uma nova porta, o que me
-	 dá a entender que main_port é uma "porta" especial, como se fosse uma 'fábrica de portas'. A chamada também popula o campo req_receive 
-         da estrutura request. A ideia agora é encontrar a inicialização da variável main_porte com isso verificar port_receive_packet,
-	 para onde aponta. */
+         dá a entender que main_port é uma "porta" especial, como se fosse uma 'fábrica de portas'. A chamada também popula o campo req_receive 
+         da estrutura request. A ideia agora é encontrar a inicialização da variável main_port e com isso verificar port_receive_packet,
+         para onde aponta. */
+      /* RDT: 20230713 - main_port é passada a função atual SRVR_multi_thread como um parâmetro. Esta port teria sido criada por INET_connect,
+         e não consegui verificar qualquer atribuição a port_receive_packet ainda. Porém, verificarei novamente em INET_connect, pois me bateu uma
+         ideia. */
       if (!(port = RECEIVE (main_port, &request->req_receive)))
       {
         gds__log ("SRVR_multi_thread/RECEIVE: error on main_port, shutting down");
