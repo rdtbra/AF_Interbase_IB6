@@ -261,28 +261,28 @@ typedef struct rrq {
 #define RRQ_last_backward	4	/* last time, the next level up asked for us to scroll in the backward direction */
 
 /* remote SQL request */
-
+/* RDT: 20230712 - Esta estrutura corresponde a uma requisição SQL remota, como comentário acima.*/
 typedef struct rsr {
-    struct blk	rsr_header;
-    struct rsr  *rsr_next;
-    struct rdb	*rsr_rdb;
-    struct rtr	*rsr_rtr;
-    int		*rsr_handle;
-    struct fmt	*rsr_bind_format;	/* Format of bind message */
-    struct fmt	*rsr_select_format;	/* Format of select message */
-    struct fmt	*rsr_user_select_format; /* Format of user's select message */
-    struct fmt	*rsr_format;		/* Format of current message */
-    struct message *rsr_message;		/* Next message to process */
-    struct message *rsr_buffer;		/* Next buffer to use */
-    STATUS	rsr_status_vector [20]; /* saved status for buffered errors */
-    USHORT	rsr_id;
-    USHORT	rsr_flags;
-    USHORT	rsr_fmt_length;
+  struct blk rsr_header;
+  struct rsr *rsr_next;
+  struct rdb *rsr_rdb;
+  struct rtr *rsr_rtr;
+  int *rsr_handle;
+  struct fmt *rsr_bind_format;	/* Format of bind message */
+  struct fmt *rsr_select_format;	/* Format of select message */
+  struct fmt *rsr_user_select_format; /* Format of user's select message */
+  struct fmt *rsr_format;		/* Format of current message */
+  struct message *rsr_message;		/* Next message to process */
+  struct message *rsr_buffer;		/* Next buffer to use */
+  STATUS rsr_status_vector [20]; /* saved status for buffered errors */
+  USHORT rsr_id;
+  USHORT rsr_flags;
+  USHORT rsr_fmt_length;
 
-    ULONG	rsr_rows_pending;	/* How many rows are pending */
-    USHORT	rsr_msgs_waiting; 	/* count of full rsr_messages */
-    USHORT	rsr_reorder_level; 	/* Trigger pipelining at this level */
-    USHORT	rsr_batch_count; 	/* Count of batches in pipeline */
+  ULONG rsr_rows_pending;	/* How many rows are pending */
+  USHORT rsr_msgs_waiting; 	/* count of full rsr_messages */
+  USHORT rsr_reorder_level; 	/* Trigger pipelining at this level */
+  USHORT rsr_batch_count; 	/* Count of batches in pipeline */
 } *RSR;
 
 #define RSR_fetched	1		/* Cleared by execute, set by fetch */
@@ -357,70 +357,72 @@ enum state_t {
 
 #endif /* WINDOWS_ONLY */
 
+/* RDT: 20230712 - Esta estrutura define uma 'porta' que não é uma porta de comunicação 
+   propriamente. */
 typedef struct port {
-    struct blk	port_header;
-    enum port_t	port_type;		/* type of port */
-    enum state_t port_state;		/* state of port */
-    P_ARCH	port_client_arch;	/* so we can tell arch of client */
-    struct port	*port_clients;		/* client ports */
-    struct port	*port_next;		/* next client port */
-    struct port	*port_parent;		/* parent port (for client ports) */
-    struct port	*port_async;		/* asynchronous sibling port */
-    struct srvr	*port_server;		/* server of port */
-    USHORT	port_server_flags;	/* TRUE if server */
-    USHORT	port_protocol;		/* protocol version number */
-    USHORT	port_buff_size;		/* port buffer size (approx) */
-    USHORT	port_flags;		/* Misc flags */
-    SLONG       port_connect_timeout;   /* Connection timeout value */
-    SLONG       port_dummy_packet_interval; /* keep alive dummy packet interval */
-    SLONG	port_dummy_timeout;	/* time remaining until keepalive packet */
-    STATUS	*port_status_vector;
-    HANDLE	port_handle;		/* handle for connection (from by OS) */
-    int		port_channel;		/* handle for connection (from by OS) */
-    int		port_misc1;
-    SLONG	port_semaphore;
-    struct linger	port_linger;		/* linger value as defined by SO_LINGER */
-    int		(*port_accept)();
-    void	(*port_disconnect)();
-    struct port	*(*port_receive_packet)();
-    XDR_INT	(*port_send_packet)();
-    XDR_INT	(*port_send_partial)();
-    struct port	*(*port_connect)();	/* Establish secondary connection */
-    struct port	*(*port_request)();	/* Request to establish secondary connection */
-    struct rdb	*port_context;
-    XDR_INT	(*port_ast)();		/* AST for events */
-    XDR		port_receive;
-    XDR		port_send;
+  struct blk port_header;
+  enum port_t port_type;		/* type of port */
+  enum state_t port_state;		/* state of port */
+  P_ARCH port_client_arch;	        /* so we can tell arch of client */
+  struct port *port_clients;		/* client ports */
+  struct port *port_next;		/* next client port */
+  struct port *port_parent;		/* parent port (for client ports) */
+  struct port *port_async;		/* asynchronous sibling port */
+  struct srvr *port_server;		/* server of port */
+  USHORT port_server_flags;	        /* TRUE if server */
+  USHORT port_protocol;		        /* protocol version number */
+  USHORT port_buff_size;		/* port buffer size (approx) */
+  USHORT port_flags;		        /* Misc flags */
+  SLONG port_connect_timeout;           /* Connection timeout value */
+  SLONG port_dummy_packet_interval;     /* keep alive dummy packet interval */
+  SLONG port_dummy_timeout;             /* time remaining until keepalive packet */
+  STATUS *port_status_vector;
+  HANDLE port_handle;                   /* handle for connection (from by OS) */
+  int port_channel;                     /* handle for connection (from by OS) */
+  int port_misc1;
+  SLONG	port_semaphore;
+  struct linger	port_linger;            /* linger value as defined by SO_LINGER */
+  int (*port_accept)();
+  void (*port_disconnect)();
+  struct port *(*port_receive_packet)();
+  XDR_INT (*port_send_packet)();
+  XDR_INT (*port_send_partial)();
+  struct port *(*port_connect)();       /* Establish secondary connection */
+  struct port *(*port_request)();       /* Request to establish secondary connection */
+  struct rdb *port_context;
+  XDR_INT (*port_ast)();		/* AST for events */
+  XDR port_receive;
+  XDR port_send;
 #ifdef DEBUG_XDR_MEMORY
-    VEC		port_packet_vector;	/* Vector of send/receive packets */
+  VEC port_packet_vector;	        /* Vector of send/receive packets */
 #endif
-    VEC		port_object_vector;
-    BLK		*port_objects;
-    STR		port_version;
-    STR		port_host;		/* Our name */
-    STR		port_connection;	/* Name of connection */
-    STR		port_user_name;
-    STR		port_passwd;
-    struct rpr	*port_rpr;		/* port stored procedure reference */
-    struct rsr	*port_statement;	/* Statement for execute immediate */
-    struct rmtque *port_receive_rmtque;	/* for client, responses waiting */
-    USHORT	port_requests_queued;	/* requests currently queued */
+  VEC port_object_vector;
+  BLK *port_objects;
+  STR port_version;
+  STR port_host;		        /* Our name */
+  STR port_connection;	                /* Name of connection */
+  STR port_user_name;
+  STR port_passwd;
+  struct rpr *port_rpr;		        /* port stored procedure reference */
+  struct rsr *port_statement;	        /* Statement for execute immediate */
+  struct rmtque *port_receive_rmtque;	/* for client, responses waiting */
+  USHORT port_requests_queued;	        /* requests currently queued */
 #ifdef WINDOWS_ONLY
-    HWND	port_msg_handle;	/* Handle to window for async msgs */
+  HWND port_msg_handle;	                /* Handle to window for async msgs */
 #endif
 #ifdef VMS
-    USHORT	port_iosb[4];
+  USHORT port_iosb[4];
 #endif
 #ifdef mpexl
-    ULONG	port_mpexl_align;
+  ULONG port_mpexl_align;
 #endif
 #ifdef NETWARE_386
-    void        *port_fdset;
+  void *port_fdset;
 #endif
 #ifdef XNET
-    void        *port_xcc;              /* interprocess structure */
+  void *port_xcc;                       /* interprocess structure */
 #endif
-    UCHAR	port_buffer[1];
+  UCHAR port_buffer[1];
 } *PORT;
 
 #define PORT_symmetric		1	/* Server/client archiectures are symmetic */
