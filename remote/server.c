@@ -219,7 +219,7 @@ THREAD_EXIT;
 
 #ifndef mpexl
 void SRVR_multi_thread (
-  PORT main_port,
+  PORT main_port,   /* RDT: 20230713 - No contexto do meu estudo, main_port é criada em https://github.com/rdtbra/IB6/blob/f471877c838d337e545fcdeb2e6b05a686abf039/remote/srvr_w32.c#L317. */
   USHORT flags)
 /* RDT: 20230708 - Servidor multi-threaded. */
 {
