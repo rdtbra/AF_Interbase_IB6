@@ -315,7 +315,7 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
      aí, após retornar de THREAD_ENTER, INET_connect será executada. */
   THREAD_ENTER;
   port = INET_connect (protocol_inet, NULL_PTR, status_vector, server_flag, 
-			NULL_PTR, 0); /* RDT: 20230713 - INET_connect -> https://github.com/rdtbra/IB6/blob/main/remote/inet.c#L1056 */
+    NULL_PTR, 0); /* RDT: 20230713 - INET_connect -> https://github.com/rdtbra/IB6/blob/main/remote/inet.c#L1056 */
   THREAD_EXIT;
 
   if (port)
