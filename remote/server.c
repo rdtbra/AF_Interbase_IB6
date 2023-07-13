@@ -73,12 +73,13 @@
 #define STMT_NO_BATCH		2
 #define STMT_OTHER		0
 
+/* RDT: 20230713 - Suponho que seja a estrutura associada a requests. Mas ainda não estou muito certo. */
 typedef struct req {
-    struct req	*req_next;
-    struct req	*req_chain;
-    PORT	req_port;
-    PACKET	req_send;
-    PACKET	req_receive;
+  struct req *req_next;
+  struct req *req_chain;
+  PORT req_port;
+  PACKET req_send;
+  PACKET req_receive;
 } *REQ;
 
 /* RDT: 20230713 - Estrutura de um servidor. */
