@@ -237,6 +237,7 @@ void SRVR_multi_thread (
   /* for PC router, no multithreading is available */
   return;
 #else
+  /* RDT: 20230713 - Eis a variável request que usamos. Ela é inicializada com NULL. */
   REQ request=NULL, active;
   VOLATILE PORT port = NULL;
   SLONG pending_requests;
