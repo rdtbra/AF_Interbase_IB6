@@ -81,11 +81,12 @@ typedef struct req {
     PACKET	req_receive;
 } *REQ;
 
+/* RDT: 20230713 - Estrutura de um servidor. */
 typedef struct srvr {
-    struct srvr	*srvr_next;
-    struct port	*srvr_parent_port;
-    enum port_t	srvr_port_type;
-    USHORT	srvr_flags;
+  struct srvr *srvr_next;            /* Próximo servidor da lista. */
+  struct port *srvr_parent_port;     /* Estrutura porta que é pai deste server. */
+  enum port_t srvr_port_type;        /* Tipo de servidor. /*
+  USHORT srvr_flags;                 /* Flags. */
 } *SRVR;
 
 static BOOLEAN	accept_connection (PORT, P_CNCT *, PACKET *);
