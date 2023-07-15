@@ -278,7 +278,7 @@ bool_t xdr_protocol (
  *
  **************************************/
   USHORT i;
-  struct p_cnct_repeat	*tail;
+  struct p_cnct_repeat *tail;
   PORT port;
   P_CNCT *connect;
   P_ACPT *accept;
