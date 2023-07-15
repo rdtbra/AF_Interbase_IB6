@@ -322,6 +322,7 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
   THREAD_EXIT;
 
   if (port)
+    /* RDT: 20230715 - Já devia ter documentado esta porção aqui. SRVR_multi_thread está aqui: https://github.com/rdtbra/IB6/blob/main/remote/server.c#L221 */
     SRVR_multi_thread (port, server_flag);
   else
     gds__log_status (NULL_PTR, status_vector);
