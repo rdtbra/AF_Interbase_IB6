@@ -2849,6 +2849,7 @@ static PORT receive (
        this routine is called */
     do  
     {
+      /* RDT: 20230714 - xdr_protocol é esta aqui: https://github.com/rdtbra/IB6/blob/main/remote/protocol.c#L263. Ela é surpreendente! :) */
       if (!xdr_protocol (&main_port->port_receive, packet))
         return NULL;
 #ifdef DEBUG
