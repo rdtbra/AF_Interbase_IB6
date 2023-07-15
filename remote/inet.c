@@ -1733,7 +1733,8 @@ return TRUE;
 }
 
 static  PORT alloc_port (
-    PORT	parent)
+  PORT parent)
+/* RDT: 20230714 - Aloca porta, e atribui muitos dos ponteiros de função utilizados em outras partes. */	
 {
 /**************************************
  *
@@ -1746,101 +1747,106 @@ static  PORT alloc_port (
  *	and initialize input and output XDR streams.
  *
  **************************************/
-PORT	port;
-TEXT	buffer [64];
+  PORT port;
+  TEXT buffer [64];
 #ifdef NETWARE_386
-SSHORT  rval;
+  SSHORT rval;
 #endif
 
 #ifdef WIN_NT
-if (!INET_initialized)
-    {
-    WORD	version;
+  if (!INET_initialized)
+  {
+    WORD version;
 
     version = MAKEWORD (1, 1);
     if (WSAStartup (version, &INET_wsadata))
-	{
-	if (parent)
-	    inet_error (parent, "WSAStartup", isc_net_init_error, ERRNO);
-	else
-	    {
-	    sprintf (buffer,
-		"INET/alloc_port: WSAStartup failed, error code = %d", ERRNO);
-	    gds__log (buffer, NULL_PTR);
-	    }
-	return NULL;
-	}
+    {
+      if (parent)
+        inet_error (parent, "WSAStartup", isc_net_init_error, ERRNO);
+      else
+      {
+        sprintf (buffer,
+          "INET/alloc_port: WSAStartup failed, error code = %d", ERRNO);
+          gds__log (buffer, NULL_PTR);
+      }
+      return NULL;
+    }
     gds__register_cleanup (exit_handler, NULL_PTR);
     INET_initialized = TRUE;
-    }
+  }
 #endif
 
-if (first_time == TRUE)
-    {char messg[128];
+  if (first_time == TRUE)
+  {
+    char messg[128];
+     
     ISC_get_config (LOCK_HEADER, INET_tcp_buffer);
+     
     if (INET_remote_buffer < MAX_DATA_LW || INET_remote_buffer > MAX_DATA_HW)
-        INET_remote_buffer = DEF_MAX_DATA; 
+      INET_remote_buffer = DEF_MAX_DATA; 
+	  
     INET_max_data = INET_remote_buffer; 
 #ifdef DEBUG
     sprintf(messg, " Info: Remote Buffer Size set to %d", INET_remote_buffer);
     gds__log(messg, NULL_PTR);
 #endif
     first_time = FALSE;
-    }
-port = (PORT) ALLOCV (type_port, INET_remote_buffer * 2);
-port->port_type = port_inet;
-port->port_state = state_pending;
-REMOTE_get_timeout_params (port, NULL_PTR, 0);
+  }
+  port = (PORT) ALLOCV (type_port, INET_remote_buffer * 2);
+  port->port_type = port_inet;
+  port->port_state = state_pending;
+  REMOTE_get_timeout_params (port, NULL_PTR, 0);
 
 #if (defined PC_PLATFORM) && !(defined NETWARE_386)
-strcpy (buffer, "localhost");
+  strcpy (buffer, "localhost");
 #else
 #ifdef NETWARE_386
-rval = GETHOSTNAME (buffer, sizeof (buffer));
-if(rval == -1) 
-    {
+  rval = GETHOSTNAME (buffer, sizeof (buffer));
+  if (rval == -1) 
+  {
     GetFileServerName(0, buffer);
     strlwr(buffer);
-    }
+  }
 #else /* !NETWARE_386 */
-GETHOSTNAME (buffer, sizeof (buffer));
+  GETHOSTNAME (buffer, sizeof (buffer));
 #endif /* !NETWARE_386 */
 #endif
 
-port->port_host = REMOTE_make_string (buffer);
-port->port_connection = REMOTE_make_string (buffer);
-sprintf (buffer, "tcp (%s)", port->port_host->str_data);
-port->port_version = REMOTE_make_string (buffer);
+  port->port_host = REMOTE_make_string (buffer);
+  port->port_connection = REMOTE_make_string (buffer);
+  sprintf (buffer, "tcp (%s)", port->port_host->str_data);
+  port->port_version = REMOTE_make_string (buffer);
 
-START_PORT_CRITICAL;
-if (parent && !(parent->port_server_flags & SRVR_thread_per_port))
-    {
+  START_PORT_CRITICAL;
+  if (parent && !(parent->port_server_flags & SRVR_thread_per_port))
+  {
     port->port_parent = parent;
     port->port_next = parent->port_clients;
     parent->port_clients = parent->port_next = port;
     port->port_handle = parent->port_handle;
     port->port_server = parent->port_server;
     port->port_server_flags = parent->port_server_flags;
-    }
-STOP_PORT_CRITICAL;
+  }
+  STOP_PORT_CRITICAL;
 
-port->port_accept = accept_connection;
-port->port_disconnect = disconnect;
-port->port_receive_packet = receive;
-port->port_send_packet = send_full;
-port->port_send_partial = send_partial;
-port->port_connect = aux_connect;
-port->port_request = aux_request;
-port->port_buff_size = INET_remote_buffer;
+  /* RDT: 20230714 - Aqui temos a atribuição dos ponteiros de função para a porta. */
+  port->port_accept = accept_connection;
+  port->port_disconnect = disconnect;
+  /* RDT: 20230714 - Incluindo a função que recebe pacotes -> receive. */
+  port->port_receive_packet = receive;
+  port->port_send_packet = send_full;
+  port->port_send_partial = send_partial;
+  port->port_connect = aux_connect;
+  port->port_request = aux_request;
+  port->port_buff_size = INET_remote_buffer;
 
-xdrinet_create (&port->port_send, port, 
-	&port->port_buffer [INET_remote_buffer], INET_remote_buffer,
-	XDR_ENCODE);
+  xdrinet_create (&port->port_send, port, 
+    &port->port_buffer [INET_remote_buffer], INET_remote_buffer,
+    XDR_ENCODE);
 
-xdrinet_create (&port->port_receive, port, port->port_buffer, 0,
-	XDR_DECODE);
+  xdrinet_create (&port->port_receive, port, port->port_buffer, 0, XDR_DECODE);
 
-return port;
+  return port;
 }
 
 static  PORT aux_connect (
