@@ -439,8 +439,7 @@ static bool_t	packet_receive 	(PORT,
 static bool_t	packet_send 	(PORT, 
 					SCHAR *, 
 					SSHORT);
-static PORT	receive 	(PORT, 
-					PACKET *);
+static PORT receive(PORT, PACKET *);               /* RDT: 20230714 - recebe pacotes - porta. */
 static PORT	select_accept 	(PORT);
 
 #ifdef NETWARE_386
@@ -2821,8 +2820,9 @@ return -1;
 #endif
 
 static PORT receive (
-    PORT	main_port,
-    PACKET	*packet)
+  PORT main_port,
+  PACKET *packet)
+/* RDT: 20230714 - recebe pacotes para a porta. */
 {
 /**************************************
  *
@@ -2836,113 +2836,112 @@ static PORT receive (
  *	block for the client.
  *
  **************************************/
-PORT	port;
+  PORT port;
 
-/* If this isn't a multi-client server, just do the operation and get it
-   over with */
-
-if (!(main_port->port_server_flags & SRVR_multi_client))
-    {
+  /* If this isn't a multi-client server, just do the operation and get it
+     over with */
+  if (!(main_port->port_server_flags & SRVR_multi_client))
+  {
     /* loop as long as we are receiving dummy packets, just
        throwing them away--note that if we are a server we won't 
        be receiving them, but it is better to check for them at 
        this level rather than try to catch them in all places where 
        this routine is called */
-
-    do  {
-	if (!xdr_protocol (&main_port->port_receive, packet))
-	    return NULL;
+    do  
+    {
+      if (!xdr_protocol (&main_port->port_receive, packet))
+        return NULL;
 #ifdef DEBUG
-	{
-	static ULONG	op_rec_count = 0;
-	op_rec_count++;
-	if (INET_trace & TRACE_operations)
-	    {
-	    ib_fprintf (ib_stdout,"%04d: OP Recd %5d opcode %d\n", 
-			inet_debug_timer(),
-			op_rec_count, packet->p_operation);
-	    ib_fflush (ib_stdout);
-	    }
-	}
+      {
+        static ULONG op_rec_count = 0;
+        op_rec_count++;
+        if (INET_trace & TRACE_operations)
+        {
+          ib_fprintf (ib_stdout,"%04d: OP Recd %5d opcode %d\n", 
+            inet_debug_timer(),
+            op_rec_count, packet->p_operation);
+          ib_fflush (ib_stdout);
+        }
+      }
 #endif
-	} 
-	while (packet->p_operation == op_dummy);
+    } 
+    while (packet->p_operation == op_dummy);
 
     return main_port;
-    }
+  }
 
-/* Multi-client server multiplexes all known ports for incoming packets. */
-
-for (;;)
-    {
+  /* Multi-client server multiplexes all known ports for incoming packets. */
+  for (;;)
+  {
 #ifdef NETWARE_386
     port = select_port (main_port);
 #else
     port = select_port (main_port, &INET_select);
 #endif
     if (port == main_port)
-	{
-	if (port = select_accept (main_port))
-	    return port;
-	continue;
-	}
+    {
+      if (port = select_accept (main_port))
+        return port;
+      continue;
+    }
     if (port)
-    	{
-	if (port->port_dummy_timeout < 0)
-	    {
-	    port->port_dummy_timeout = port->port_dummy_packet_interval;
-	    if (port->port_flags & PORT_async ||
-		port->port_protocol < PROTOCOL_VERSION8)
-		continue;
-	    packet->p_operation = op_dummy;
-	    return port;
-	    }
-	/* We've got data -- lap it up and use it */
-
-	if (!xdr_protocol (&port->port_receive, packet))
-	    packet->p_operation = op_exit;
+    {
+      if (port->port_dummy_timeout < 0)
+      {
+        port->port_dummy_timeout = port->port_dummy_packet_interval;
+        if (port->port_flags & PORT_async ||
+          port->port_protocol < PROTOCOL_VERSION8)
+          continue;
+        packet->p_operation = op_dummy;
+        return port;
+      }
+	    
+      /* We've got data -- lap it up and use it */
+      if (!xdr_protocol (&port->port_receive, packet))
+        packet->p_operation = op_exit;
 #ifdef DEBUG
-	{
-	static ULONG op_rec_count = 0;
-	op_rec_count++;
-	if (INET_trace & TRACE_operations)
-	    {
-	    ib_fprintf (ib_stdout,"%05d: OP Recd %5d opcode %d\n", 
-			inet_debug_timer(),
-			op_rec_count, packet->p_operation);
-	    ib_fflush (ib_stdout);
-	    }
-	};
+      {
+        static ULONG op_rec_count = 0;
+        op_rec_count++;
+	      
+        if (INET_trace & TRACE_operations)
+        {
+          ib_fprintf (ib_stdout,"%05d: OP Recd %5d opcode %d\n", 
+            inet_debug_timer(),
+            op_rec_count, packet->p_operation);
+          ib_fflush (ib_stdout);
+        }
+      };
 #endif
 
-/*  Make sure that there are no more messages in this port before blocking
-    ourselves in select_wait. If there are more messages then set the flag
-    corresponding to this port which was cleared in select_port routine.
-*/
+      /*  Make sure that there are no more messages in this port before blocking
+          ourselves in select_wait. If there are more messages then set the flag
+          corresponding to this port which was cleared in select_port routine.
+       */
 #ifndef NETWARE_386
-	if (port->port_receive.x_handy)
-	    {
-	    FD_SET ((SLONG) port->port_handle, &INET_select.slct_fdset);
-	    ++INET_select.slct_count;
-	    }
+      if (port->port_receive.x_handy)
+      {
+        FD_SET ((SLONG) port->port_handle, &INET_select.slct_fdset);
+        ++INET_select.slct_count;
+      }
 #else
-        /* DGUX compiler does not treat correctly abbreviation in such a constructions so
-           "we've" was changed to "we have" */
-		/* 5.5 SCO Port: Used #error to generate compiler error */
+      /* DGUX compiler does not treat correctly abbreviation in such a constructions so
+         "we've" was changed to "we have" */
+      /* 5.5 SCO Port: Used #error to generate compiler error */
 #error	Generated a compiler error since we have not put in the NetWare specific code here.
 #endif
-	if (packet->p_operation == op_dummy)
-	    continue;
+      if (packet->p_operation == op_dummy)
+        continue;
 
-	return port;
-	}
+      return port;
+    }
 #ifdef NETWARE_386
     if (!select_wait (main_port))
 #else
     if (!select_wait (main_port, &INET_select))
 #endif
-	return NULL;
-    }
+      return NULL;
+  }
 }
 
 static PORT select_accept (
