@@ -261,8 +261,11 @@ assert (i < vector->vec_count); /* Couldn't find packet for this xdr arg */
 #endif
 
 bool_t xdr_protocol (
-    XDR		*xdrs,
-    PACKET	*p)
+  XDR *xdrs,
+  PACKET *p)
+/* RDT: 20230714 - Esta função foi uma surpresa para mim, no momento. Achei que ela seria responsável apenas por alguma questão 
+   de comunicação, até pelo seu nome, mas estou vendo que não é. Observo um grande switch, aparentemente separando operações de
+   bancos de dados já. Preciso seguir com mais atenção agora. */
 {
 /**************************************
  *
@@ -274,211 +277,208 @@ bool_t xdr_protocol (
  *	Encode, decode, or free a protocol packet.
  *
  **************************************/
-USHORT		i;
-struct p_cnct_repeat	*tail;
-PORT		port;
-P_CNCT		*connect;
-P_ACPT		*accept;
-P_ATCH		*attach;
-P_RESP		*response;
-P_CMPL		*compile;
-P_STTR		*transaction;
-P_DATA		*data;
-P_RLSE		*release;
-P_BLOB		*blob;
-P_SGMT		*segment;
-P_INFO		*info;
-P_PREP		*prepare;
-P_EVENT		*event;
-P_REQ		*request;
-P_DDL		*ddl;
-P_SLC		*slice;
-P_SLR		*slice_response;
-P_SEEK		*seek;
-P_SQLFREE	*free_stmt;
-P_SQLCUR	*sqlcur;
-P_SQLST		*prep_stmt;
-P_SQLDATA	*sqldata;
-P_TRRQ		*trrq;
+  USHORT i;
+  struct p_cnct_repeat	*tail;
+  PORT port;
+  P_CNCT *connect;
+  P_ACPT *accept;
+  P_ATCH *attach;
+  P_RESP *response;
+  P_CMPL *compile;
+  P_STTR *transaction;
+  P_DATA *data;
+  P_RLSE *release;
+  P_BLOB *blob;
+  P_SGMT *segment;
+  P_INFO *info;
+  P_PREP *prepare;
+  P_EVENT *event;
+  P_REQ *request;
+  P_DDL *ddl;
+  P_SLC *slice;
+  P_SLR *slice_response;
+  P_SEEK *seek;
+  P_SQLFREE *free_stmt;
+  P_SQLCUR *sqlcur;
+  P_SQLST *prep_stmt;
+  P_SQLDATA *sqldata;
+  P_TRRQ *trrq;
 #ifdef DEBUG
-xdr_save_size = xdrs->x_handy;
+  xdr_save_size = xdrs->x_handy;
 #endif
 
-DEBUG_XDR_PACKET;
+  DEBUG_XDR_PACKET;
 
-if (!xdr_enum (xdrs, &p->p_operation))
+  if (!xdr_enum (xdrs, &p->p_operation))
     return P_FALSE;
 
-switch (p->p_operation)
-    {
+  switch (p->p_operation)
+  {
     case op_reject:
     case op_disconnect:
     case op_dummy:
-	return P_TRUE;
+      return P_TRUE;
 
     case op_connect:
-	connect = &p->p_cnct;
-	MAP (xdr_enum, connect->p_cnct_operation);
-	MAP (xdr_short, connect->p_cnct_cversion);
-	MAP (xdr_enum, connect->p_cnct_client);
-	MAP (xdr_cstring, connect->p_cnct_file);
-	MAP (xdr_short, connect->p_cnct_count);
-	MAP (xdr_cstring, connect->p_cnct_user_id);
-	for (i = 0, tail = connect->p_cnct_versions; 
-	     i < connect->p_cnct_count; i++, tail++)
-	    {
-	    MAP (xdr_short, tail->p_cnct_version);
-	    MAP (xdr_enum, tail->p_cnct_architecture);
-	    MAP (xdr_u_short, tail->p_cnct_min_type);
-	    MAP (xdr_u_short, tail->p_cnct_max_type);
-	    MAP (xdr_short, tail->p_cnct_weight);
-	    }
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      connect = &p->p_cnct;
+      MAP (xdr_enum, connect->p_cnct_operation);
+      MAP (xdr_short, connect->p_cnct_cversion);
+      MAP (xdr_enum, connect->p_cnct_client);
+      MAP (xdr_cstring, connect->p_cnct_file);
+      MAP (xdr_short, connect->p_cnct_count);
+      MAP (xdr_cstring, connect->p_cnct_user_id);
+      for (i = 0, tail = connect->p_cnct_versions; 
+        i < connect->p_cnct_count; i++, tail++)
+      {
+        MAP (xdr_short, tail->p_cnct_version);
+        MAP (xdr_enum, tail->p_cnct_architecture);
+        MAP (xdr_u_short, tail->p_cnct_min_type);
+        MAP (xdr_u_short, tail->p_cnct_max_type);
+        MAP (xdr_short, tail->p_cnct_weight);
+      }
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_accept:
-	accept = &p->p_acpt;
-	MAP (xdr_short, accept->p_acpt_version);
-	MAP (xdr_enum, accept->p_acpt_architecture);
-	MAP (xdr_u_short, accept->p_acpt_type);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      accept = &p->p_acpt;
+      MAP (xdr_short, accept->p_acpt_version);
+      MAP (xdr_enum, accept->p_acpt_architecture);
+      MAP (xdr_u_short, accept->p_acpt_type);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_connect_request:
     case op_aux_connect:
-	request = &p->p_req;
-	MAP (xdr_short, request->p_req_type);
-	MAP (xdr_short, request->p_req_object);
-	MAP (xdr_long, request->p_req_partner);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      request = &p->p_req;
+      MAP (xdr_short, request->p_req_type);
+      MAP (xdr_short, request->p_req_object);
+      MAP (xdr_long, request->p_req_partner);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_attach:
     case op_create:
     case op_service_attach:
-	attach = &p->p_atch;
-	MAP (xdr_short, attach->p_atch_database);
-	MAP (xdr_cstring, attach->p_atch_file);
-	MAP (xdr_cstring, attach->p_atch_dpb);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      attach = &p->p_atch;
+      MAP (xdr_short, attach->p_atch_database);
+      MAP (xdr_cstring, attach->p_atch_file);
+      MAP (xdr_cstring, attach->p_atch_dpb);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_compile:
-	compile = &p->p_cmpl;
-	MAP (xdr_short, compile->p_cmpl_database);
-	MAP (xdr_cstring, compile->p_cmpl_blr);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      compile = &p->p_cmpl;
+      MAP (xdr_short, compile->p_cmpl_database);
+      MAP (xdr_cstring, compile->p_cmpl_blr);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_receive:
     case op_start:
     case op_start_and_receive:
-	data = &p->p_data;
-	MAP (xdr_short, data->p_data_request);
-	MAP (xdr_short, data->p_data_incarnation);
-	MAP (xdr_short, data->p_data_transaction);
-	MAP (xdr_short, data->p_data_message_number);
-	MAP (xdr_short, data->p_data_messages);
+      data = &p->p_data;
+      MAP (xdr_short, data->p_data_request);
+      MAP (xdr_short, data->p_data_incarnation);
+      MAP (xdr_short, data->p_data_transaction);
+      MAP (xdr_short, data->p_data_message_number);
+      MAP (xdr_short, data->p_data_messages);
 #ifdef SCROLLABLE_CURSORS
-	port = (PORT) xdrs->x_public;
-	if ((p->p_operation == op_receive) && 
-	    (port->port_protocol > PROTOCOL_VERSION8))
-	    {
-	    MAP (xdr_short, data->p_data_direction);
-	    MAP (xdr_long, data->p_data_offset);
-	    }
+      port = (PORT) xdrs->x_public;
+      if ((p->p_operation == op_receive) && 
+        (port->port_protocol > PROTOCOL_VERSION8))
+      {
+        MAP (xdr_short, data->p_data_direction);
+        MAP (xdr_long, data->p_data_offset);
+      }
 
 #endif	 
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_send:
     case op_start_and_send:
     case op_start_send_and_receive:
-	data = &p->p_data;
-	MAP (xdr_short, data->p_data_request);
-	MAP (xdr_short, data->p_data_incarnation);
-	MAP (xdr_short, data->p_data_transaction);
-	MAP (xdr_short, data->p_data_message_number);
-	MAP (xdr_short, data->p_data_messages);
+      data = &p->p_data;
+      MAP (xdr_short, data->p_data_request);
+      MAP (xdr_short, data->p_data_incarnation);
+      MAP (xdr_short, data->p_data_transaction);
+      MAP (xdr_short, data->p_data_message_number);
+      MAP (xdr_short, data->p_data_messages);
 
-	/* Changes to this op's protocol must mirror in xdr_protocol_overhead */
-
-	return xdr_request (xdrs, data->p_data_request,
-			    data->p_data_message_number,
-			    data->p_data_incarnation) ? P_TRUE : P_FALSE;
+      /* Changes to this op's protocol must mirror in xdr_protocol_overhead */
+      return xdr_request (xdrs, data->p_data_request,
+        data->p_data_message_number,
+        data->p_data_incarnation) ? P_TRUE : P_FALSE;
 
     case op_response:
     case op_response_piggyback:
-
-	/* Changes to this op's protocol must be mirrored 
-	   in xdr_protocol_overhead */
-
-	response = &p->p_resp;
-	MAP (xdr_short, response->p_resp_object);
-	MAP (xdr_quad, response->p_resp_blob_id);
-	MAP (xdr_cstring, response->p_resp_data);
-	return xdr_status_vector (xdrs, response->p_resp_status_vector,
-				  response->p_resp_strings) ? P_TRUE : P_FALSE;
+      /* Changes to this op's protocol must be mirrored 
+         in xdr_protocol_overhead */
+      response = &p->p_resp;
+      MAP (xdr_short, response->p_resp_object);
+      MAP (xdr_quad, response->p_resp_blob_id);
+      MAP (xdr_cstring, response->p_resp_data);
+      return xdr_status_vector (xdrs, response->p_resp_status_vector,
+        response->p_resp_strings) ? P_TRUE : P_FALSE;
 
     case op_transact:
-	trrq = &p->p_trrq;
-	MAP (xdr_short, trrq->p_trrq_database);
-	MAP (xdr_short, trrq->p_trrq_transaction);
-	xdr_trrq_blr (xdrs, &trrq->p_trrq_blr);
-	MAP (xdr_cstring, trrq->p_trrq_blr);
-	MAP (xdr_short, trrq->p_trrq_messages);
-	if (trrq->p_trrq_messages)
-	    return xdr_trrq_message (xdrs, 0) ? P_TRUE : P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      trrq = &p->p_trrq;
+      MAP (xdr_short, trrq->p_trrq_database);
+      MAP (xdr_short, trrq->p_trrq_transaction);
+      xdr_trrq_blr (xdrs, &trrq->p_trrq_blr);
+      MAP (xdr_cstring, trrq->p_trrq_blr);
+      MAP (xdr_short, trrq->p_trrq_messages);
+      if (trrq->p_trrq_messages)
+        return xdr_trrq_message (xdrs, 0) ? P_TRUE : P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_transact_response:
-	data = &p->p_data;
-	MAP (xdr_short, data->p_data_messages);
-	if (data->p_data_messages)
-	    return xdr_trrq_message (xdrs, 1) ? P_TRUE : P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      data = &p->p_data;
+      MAP (xdr_short, data->p_data_messages);
+      if (data->p_data_messages)
+        return xdr_trrq_message (xdrs, 1) ? P_TRUE : P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_open_blob2:
     case op_create_blob2:
-	blob = &p->p_blob;
-	MAP (xdr_cstring, blob->p_blob_bpb);
+      blob = &p->p_blob;
+      MAP (xdr_cstring, blob->p_blob_bpb);
 
     case op_open_blob:
     case op_create_blob:
-	blob = &p->p_blob;
-	MAP (xdr_short, blob->p_blob_transaction);
-	MAP (xdr_quad, blob->p_blob_id);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      blob = &p->p_blob;
+      MAP (xdr_short, blob->p_blob_transaction);
+      MAP (xdr_quad, blob->p_blob_id);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_get_segment:
     case op_put_segment:
     case op_batch_segments:
-	segment = &p->p_sgmt;
-	MAP (xdr_short, segment->p_sgmt_blob);
-	MAP (xdr_short, segment->p_sgmt_length);
-	MAP (xdr_cstring, segment->p_sgmt_segment);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      segment = &p->p_sgmt;
+      MAP (xdr_short, segment->p_sgmt_blob);
+      MAP (xdr_short, segment->p_sgmt_length);
+      MAP (xdr_cstring, segment->p_sgmt_segment);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_seek_blob:
-	seek = &p->p_seek;
-	MAP (xdr_short, seek->p_seek_blob);
-	MAP (xdr_short, seek->p_seek_mode);
-	MAP (xdr_long, seek->p_seek_offset);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      seek = &p->p_seek;
+      MAP (xdr_short, seek->p_seek_blob);
+      MAP (xdr_short, seek->p_seek_mode);
+      MAP (xdr_long, seek->p_seek_offset);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_reconnect:
     case op_transaction:
-	transaction = &p->p_sttr;
-	MAP (xdr_short, transaction->p_sttr_database);
-	MAP (xdr_cstring, transaction->p_sttr_tpb);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      transaction = &p->p_sttr;
+      MAP (xdr_short, transaction->p_sttr_database);
+      MAP (xdr_cstring, transaction->p_sttr_tpb);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_info_blob:
     case op_info_database:
@@ -486,23 +486,23 @@ switch (p->p_operation)
     case op_info_transaction:
     case op_service_info:
     case op_info_sql:
-	info = &p->p_info;
-	MAP (xdr_short, info->p_info_object);
-	MAP (xdr_short, info->p_info_incarnation);
-	MAP (xdr_cstring, info->p_info_items);
-	if (p->p_operation == op_service_info)
-	    MAP (xdr_cstring, info->p_info_recv_items);
-	MAP (xdr_short, info->p_info_buffer_length);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      info = &p->p_info;
+      MAP (xdr_short, info->p_info_object);
+      MAP (xdr_short, info->p_info_incarnation);
+      MAP (xdr_cstring, info->p_info_items);
+      if (p->p_operation == op_service_info)
+        MAP (xdr_cstring, info->p_info_recv_items);
+      MAP (xdr_short, info->p_info_buffer_length);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_service_start:
-	info = &p->p_info;
-	MAP (xdr_short, info->p_info_object);
-	MAP (xdr_short, info->p_info_incarnation);
-	MAP (xdr_cstring, info->p_info_items);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      info = &p->p_info;
+      MAP (xdr_short, info->p_info_object);
+      MAP (xdr_short, info->p_info_incarnation);
+      MAP (xdr_cstring, info->p_info_items);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_commit:
     case op_prepare:
@@ -517,205 +517,202 @@ switch (p->p_operation)
     case op_commit_retaining:
     case op_rollback_retaining:
     case op_allocate_statement:
-	release = &p->p_rlse;
-	MAP (xdr_short, release->p_rlse_object);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      release = &p->p_rlse;
+      MAP (xdr_short, release->p_rlse_object);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_prepare2:
-	prepare = &p->p_prep;
-	MAP (xdr_short, prepare->p_prep_transaction);
-	MAP (xdr_cstring, prepare->p_prep_data);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      prepare = &p->p_prep;
+      MAP (xdr_short, prepare->p_prep_transaction);
+      MAP (xdr_cstring, prepare->p_prep_data);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
     
     case op_que_events:
     case op_event:
-	event = &p->p_event;
-	MAP (xdr_short, event->p_event_database);
-	MAP (xdr_cstring, event->p_event_items);
-	MAP (xdr_long, event->p_event_ast);
-	MAP (xdr_long, event->p_event_arg);
-	MAP (xdr_long, event->p_event_rid);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      event = &p->p_event;
+      MAP (xdr_short, event->p_event_database);
+      MAP (xdr_cstring, event->p_event_items);
+      MAP (xdr_long, event->p_event_ast);
+      MAP (xdr_long, event->p_event_arg);
+      MAP (xdr_long, event->p_event_rid);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_cancel_events:
-	event = &p->p_event;
-	MAP (xdr_short, event->p_event_database);
-	MAP (xdr_long, event->p_event_rid);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      event = &p->p_event;
+      MAP (xdr_short, event->p_event_database);
+      MAP (xdr_long, event->p_event_rid);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_ddl:
-	ddl = &p->p_ddl;
-	MAP (xdr_short, ddl->p_ddl_database);
-	MAP (xdr_short, ddl->p_ddl_transaction);
-	MAP (xdr_cstring, ddl->p_ddl_blr);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      ddl = &p->p_ddl;
+      MAP (xdr_short, ddl->p_ddl_database);
+      MAP (xdr_short, ddl->p_ddl_transaction);
+      MAP (xdr_cstring, ddl->p_ddl_blr);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_get_slice:
     case op_put_slice:
-	slice = &p->p_slc;
-	MAP (xdr_short, slice->p_slc_transaction);
-	MAP (xdr_quad, slice->p_slc_id);
-	MAP (xdr_long, slice->p_slc_length);
-	MAP (xdr_cstring, slice->p_slc_sdl);
-	MAP (xdr_longs, slice->p_slc_parameters);
-	slice_response = &p->p_slr;
-	if (slice_response->p_slr_sdl)
-	    {
-	    if (!xdr_slice (xdrs, &slice->p_slc_slice, 
-			    slice_response->p_slr_sdl_length, slice_response->p_slr_sdl))
-		return P_FALSE;
-	    }
-	else
-	    if (!xdr_slice (xdrs, &slice->p_slc_slice, 
-			    slice->p_slc_sdl.cstr_length, slice->p_slc_sdl.cstr_address))
-		return P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      slice = &p->p_slc;
+      MAP (xdr_short, slice->p_slc_transaction);
+      MAP (xdr_quad, slice->p_slc_id);
+      MAP (xdr_long, slice->p_slc_length);
+      MAP (xdr_cstring, slice->p_slc_sdl);
+      MAP (xdr_longs, slice->p_slc_parameters);
+      slice_response = &p->p_slr;
+      if (slice_response->p_slr_sdl)
+      {
+        if (!xdr_slice (xdrs, &slice->p_slc_slice, 
+          slice_response->p_slr_sdl_length, slice_response->p_slr_sdl))
+        return P_FALSE;
+      }
+      else
+        if (!xdr_slice (xdrs, &slice->p_slc_slice, 
+          slice->p_slc_sdl.cstr_length, slice->p_slc_sdl.cstr_address))
+          return P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 	
     case op_slice:
-	slice_response = &p->p_slr;
-	MAP (xdr_long, slice_response->p_slr_length);
-	if (!xdr_slice (xdrs, &slice_response->p_slr_slice, 
-			slice_response->p_slr_sdl_length, slice_response->p_slr_sdl))
-	    return P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      slice_response = &p->p_slr;
+      MAP (xdr_long, slice_response->p_slr_length);
+      if (!xdr_slice (xdrs, &slice_response->p_slr_slice, 
+        slice_response->p_slr_sdl_length, slice_response->p_slr_sdl))
+        return P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_execute:
     case op_execute2:
-   	sqldata = &p->p_sqldata;
-	MAP (xdr_short, sqldata->p_sqldata_statement);
-	MAP (xdr_short, sqldata->p_sqldata_transaction);
-        if (xdrs->x_op == XDR_DECODE)
-            {
-	    /* the statement should be reset for each execution so that 
-               all prefetched information from a prior execute is properly 
-               cleared out.  This should be done before fetching any message 
-               information (for example: blr info)
-	    */
+      sqldata = &p->p_sqldata;
+      MAP (xdr_short, sqldata->p_sqldata_statement);
+      MAP (xdr_short, sqldata->p_sqldata_transaction);
+      if (xdrs->x_op == XDR_DECODE)
+      {
+        /* the statement should be reset for each execution so that 
+           all prefetched information from a prior execute is properly 
+           cleared out.  This should be done before fetching any message 
+           information (for example: blr info)
+         */
+        RSR statement = NULL;
+        statement = get_statement (xdrs, sqldata->p_sqldata_statement);
+        if (statement)
+          REMOTE_reset_statement (statement);
+      }
 
-            RSR statement = NULL;
-            statement = get_statement (xdrs, sqldata->p_sqldata_statement);
-            if (statement)
-		REMOTE_reset_statement (statement);
-            }
-
-	xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,
-		     &sqldata->p_sqldata_blr, FALSE, TYPE_PREPARED);
-	MAP (xdr_short, sqldata->p_sqldata_message_number);
-	MAP (xdr_short, sqldata->p_sqldata_messages);
-	if (sqldata->p_sqldata_messages)
-	    {
-	    if (!xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement))
-	        return P_FALSE;
-	    }
-	if (p->p_operation == op_execute2)
-	    {
-	    xdr_sql_blr (xdrs, (SLONG) -1, &sqldata->p_sqldata_out_blr, TRUE, TYPE_PREPARED);
-	    MAP (xdr_short, sqldata->p_sqldata_out_message_number);
-	    }
-  	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,
+        &sqldata->p_sqldata_blr, FALSE, TYPE_PREPARED);
+      MAP (xdr_short, sqldata->p_sqldata_message_number);
+      MAP (xdr_short, sqldata->p_sqldata_messages);
+	    
+      if (sqldata->p_sqldata_messages)
+      {
+        if (!xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement))
+          return P_FALSE;
+      }
+      if (p->p_operation == op_execute2)
+      {
+        xdr_sql_blr (xdrs, (SLONG) -1, &sqldata->p_sqldata_out_blr, TRUE, TYPE_PREPARED);
+        MAP (xdr_short, sqldata->p_sqldata_out_message_number);
+      }
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_exec_immediate2:
-	prep_stmt = &p->p_sqlst;
-	xdr_sql_blr (xdrs, (SLONG) -1, &prep_stmt->p_sqlst_blr, FALSE, TYPE_IMMEDIATE);
-	MAP (xdr_short, prep_stmt->p_sqlst_message_number);
-	MAP (xdr_short, prep_stmt->p_sqlst_messages);
-	if (prep_stmt->p_sqlst_messages)
-	    {
-	    if (!xdr_sql_message (xdrs, (SLONG) -1))
-		return P_FALSE;
-	    }
-	xdr_sql_blr (xdrs, (SLONG) -1, &prep_stmt->p_sqlst_out_blr, TRUE, TYPE_IMMEDIATE);
-	MAP (xdr_short, prep_stmt->p_sqlst_out_message_number);
-	/* Fall into ... */
+      prep_stmt = &p->p_sqlst;
+      xdr_sql_blr (xdrs, (SLONG) -1, &prep_stmt->p_sqlst_blr, FALSE, TYPE_IMMEDIATE);
+      MAP (xdr_short, prep_stmt->p_sqlst_message_number);
+      MAP (xdr_short, prep_stmt->p_sqlst_messages);
+      if (prep_stmt->p_sqlst_messages)
+      {
+        if (!xdr_sql_message (xdrs, (SLONG) -1))
+          return P_FALSE;
+      } 
+      xdr_sql_blr (xdrs, (SLONG) -1, &prep_stmt->p_sqlst_out_blr, TRUE, TYPE_IMMEDIATE);
+      MAP (xdr_short, prep_stmt->p_sqlst_out_message_number);
+      /* Fall into ... */
 
     case op_exec_immediate:
     case op_prepare_statement:
-	prep_stmt = &p->p_sqlst;
-	MAP (xdr_short, prep_stmt->p_sqlst_transaction);
-	MAP (xdr_short, prep_stmt->p_sqlst_statement);
-	MAP (xdr_short, prep_stmt->p_sqlst_SQL_dialect);
-	MAP (xdr_cstring, prep_stmt->p_sqlst_SQL_str);
-	MAP (xdr_cstring, prep_stmt->p_sqlst_items);
-	MAP (xdr_short, prep_stmt->p_sqlst_buffer_length);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      prep_stmt = &p->p_sqlst;
+      MAP (xdr_short, prep_stmt->p_sqlst_transaction);
+      MAP (xdr_short, prep_stmt->p_sqlst_statement);
+      MAP (xdr_short, prep_stmt->p_sqlst_SQL_dialect);
+      MAP (xdr_cstring, prep_stmt->p_sqlst_SQL_str);
+      MAP (xdr_cstring, prep_stmt->p_sqlst_items);
+      MAP (xdr_short, prep_stmt->p_sqlst_buffer_length);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_fetch:
-	sqldata = &p->p_sqldata;
-	MAP (xdr_short, sqldata->p_sqldata_statement);
-	xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,
-		     &sqldata->p_sqldata_blr, TRUE, TYPE_PREPARED);
-	MAP (xdr_short, sqldata->p_sqldata_message_number);
-	MAP (xdr_short, sqldata->p_sqldata_messages);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      sqldata = &p->p_sqldata;
+      MAP (xdr_short, sqldata->p_sqldata_statement);
+      xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,&sqldata->p_sqldata_blr, TRUE, TYPE_PREPARED);
+      MAP (xdr_short, sqldata->p_sqldata_message_number);
+      MAP (xdr_short, sqldata->p_sqldata_messages);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_fetch_response:
-	sqldata = &p->p_sqldata;
-	MAP (xdr_long, sqldata->p_sqldata_status);
-	MAP (xdr_short, sqldata->p_sqldata_messages);
+      sqldata = &p->p_sqldata;
+      MAP (xdr_long, sqldata->p_sqldata_status);
+      MAP (xdr_short, sqldata->p_sqldata_messages);
 
-	/* Changes to this op's protocol must mirror in xdr_protocol_overhead */
-
-	port = (PORT) xdrs->x_public;
-	if ((port->port_protocol > PROTOCOL_VERSION7 && sqldata->p_sqldata_messages) ||
-	    (port->port_protocol <= PROTOCOL_VERSION7 && !sqldata->p_sqldata_status))
-	    return xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement) ? P_TRUE : P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      /* Changes to this op's protocol must mirror in xdr_protocol_overhead */
+      port = (PORT) xdrs->x_public;
+	    
+      if ((port->port_protocol > PROTOCOL_VERSION7 && sqldata->p_sqldata_messages) ||
+          (port->port_protocol <= PROTOCOL_VERSION7 && !sqldata->p_sqldata_status))
+        return xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement) ? P_TRUE : P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_free_statement:
-	free_stmt = &p->p_sqlfree;
-	MAP (xdr_short, free_stmt->p_sqlfree_statement);
-	MAP (xdr_short, free_stmt->p_sqlfree_option);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      free_stmt = &p->p_sqlfree;
+      MAP (xdr_short, free_stmt->p_sqlfree_statement);
+      MAP (xdr_short, free_stmt->p_sqlfree_option);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_insert:
-	sqldata = &p->p_sqldata;
-	MAP (xdr_short, sqldata->p_sqldata_statement);
-	xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,
-		     &sqldata->p_sqldata_blr, FALSE, TYPE_PREPARED);
-	MAP (xdr_short, sqldata->p_sqldata_message_number);
-	MAP (xdr_short, sqldata->p_sqldata_messages);
-	if (sqldata->p_sqldata_messages)
-	    return xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement) ? P_TRUE : P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      sqldata = &p->p_sqldata;
+      MAP (xdr_short, sqldata->p_sqldata_statement);
+      xdr_sql_blr (xdrs, (SLONG) sqldata->p_sqldata_statement,&sqldata->p_sqldata_blr, FALSE, TYPE_PREPARED);
+      MAP (xdr_short, sqldata->p_sqldata_message_number);
+      MAP (xdr_short, sqldata->p_sqldata_messages);
+      if (sqldata->p_sqldata_messages)
+        return xdr_sql_message (xdrs, (SLONG) sqldata->p_sqldata_statement) ? P_TRUE : P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_set_cursor:
-	sqlcur = &p->p_sqlcur;
-	MAP (xdr_short, sqlcur->p_sqlcur_statement);
-	MAP (xdr_cstring, sqlcur->p_sqlcur_cursor_name);
-	MAP (xdr_short, sqlcur->p_sqlcur_type);
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      sqlcur = &p->p_sqlcur;
+      MAP (xdr_short, sqlcur->p_sqlcur_statement);
+      MAP (xdr_cstring, sqlcur->p_sqlcur_cursor_name);
+      MAP (xdr_short, sqlcur->p_sqlcur_type);
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     case op_sql_response:
-	sqldata = &p->p_sqldata;
-	MAP (xdr_short, sqldata->p_sqldata_messages);
-	if (sqldata->p_sqldata_messages)
-	    return xdr_sql_message (xdrs, (SLONG) -1) ? P_TRUE : P_FALSE;
-	DEBUG_PRINTSIZE (p->p_operation);
-	return P_TRUE;
+      sqldata = &p->p_sqldata;
+      MAP (xdr_short, sqldata->p_sqldata_messages);
+      if (sqldata->p_sqldata_messages)
+        return xdr_sql_message (xdrs, (SLONG) -1) ? P_TRUE : P_FALSE;
+      DEBUG_PRINTSIZE (p->p_operation);
+      return P_TRUE;
 
     default:
 #ifdef DEBUG
-	if (xdrs->x_op != XDR_FREE)
-	    ib_fprintf (ib_stderr, "xdr_packet: operation %d not recognized\n",
-		    p->p_operation);
+      if (xdrs->x_op != XDR_FREE)
+        ib_fprintf (ib_stderr, "xdr_packet: operation %d not recognized\n", p->p_operation);
 #endif
-	assert (xdrs->x_op == XDR_FREE);
-	return P_FALSE;
-    }
+      assert (xdrs->x_op == XDR_FREE);
+      return P_FALSE;
+  }
 }
 
 ULONG xdr_protocol_overhead (
