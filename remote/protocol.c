@@ -391,7 +391,6 @@ bool_t xdr_protocol (
         MAP (xdr_short, data->p_data_direction);
         MAP (xdr_long, data->p_data_offset);
       }
-
 #endif	 
       DEBUG_PRINTSIZE (p->p_operation);
       return P_TRUE;
