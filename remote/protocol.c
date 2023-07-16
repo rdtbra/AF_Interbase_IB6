@@ -49,7 +49,8 @@
 #define DEBUG_XDR_FREE(xdrvar, addr, len)
 #endif /* DEBUG_XDR_MEMORY */
 
-#define MAP(routine, ptr)	if (!routine (xdrs, &ptr)) return P_FALSE;
+/* RDT: 20230715 - Macro para execução de rotinas diversas de protocolo. */
+#define MAP(routine, ptr) if (!routine (xdrs, &ptr)) return P_FALSE;
 #define MAX_OPAQUE		32768
 
 typedef enum {
