@@ -2548,8 +2548,9 @@ return 1;
 
 #ifdef WIN_NT
 static int fork (
-    SOCKET	old_handle,
-    USHORT	flag)
+  SOCKET old_handle,
+  USHORT flag)
+/* RDT: 20230720 - implementação de uma função fork no Windows, usando os recursos da API. */
 {
 /**************************************
  *
@@ -2561,75 +2562,82 @@ static int fork (
  *	Create a child process.
  *
  **************************************/
-HANDLE	 		new_handle;
-USHORT			ret;
-STARTUPINFO		start_crud;
-PROCESS_INFORMATION	pi;
+  HANDLE new_handle;
+  USHORT ret;
+  STARTUPINFO start_crud;
+  PROCESS_INFORMATION pi;
 
-if (!INET_command_line [0])
-    {
-    SC_HANDLE	manager, service;
+  if (!INET_command_line [0])
+  {
+    SC_HANDLE manager, service;
 
     if ((manager = OpenSCManager (NULL, NULL, SC_MANAGER_CONNECT)) &&
-	(service = OpenService (manager, REMOTE_SERVICE, SERVICE_QUERY_CONFIG)))
-	{
-	LPQUERY_SERVICE_CONFIG	config;
-	SCHAR			buffer [1024];
-	DWORD			config_len;
+      (service = OpenService (manager, REMOTE_SERVICE, SERVICE_QUERY_CONFIG)))
+    {
+      LPQUERY_SERVICE_CONFIG config;
+      SCHAR buffer [1024];
+      DWORD config_len;
 
-	config = (LPQUERY_SERVICE_CONFIG) buffer;
-	if (!QueryServiceConfig (service, config, sizeof (buffer), &config_len))
-	    {
-	    THREAD_ENTER;
-	    config = (LPQUERY_SERVICE_CONFIG) ALLR_alloc (config_len);
-	    /* NOMEM: ALLR_alloc handled */
-	    /* FREE:  later in this block */
-	    QueryServiceConfig (service, config, config_len, &config_len);
-	    }
-	strcpy (INET_command_line, config->lpBinaryPathName);
-	if ((SCHAR*) config != buffer)
-	    {
-	    ALLR_free (config);
-	    THREAD_EXIT;
-	    }
-	CloseServiceHandle (service);
-	}
+      config = (LPQUERY_SERVICE_CONFIG) buffer;
+	    
+      if (!QueryServiceConfig (service, config, sizeof (buffer), &config_len))
+      {
+        THREAD_ENTER;
+        config = (LPQUERY_SERVICE_CONFIG) ALLR_alloc (config_len);
+        /* NOMEM: ALLR_alloc handled */
+        /* FREE:  later in this block */
+        QueryServiceConfig (service, config, config_len, &config_len);
+      }
+	    
+      strcpy (INET_command_line, config->lpBinaryPathName);
+	    
+      if ((SCHAR*) config != buffer)
+      {
+        ALLR_free (config);
+        THREAD_EXIT;
+      }
+      CloseServiceHandle (service);
+    }
     else
-	strcpy (INET_command_line, GetCommandLine());
+      strcpy (INET_command_line, GetCommandLine());
+	  
     CloseServiceHandle (manager);
     INET_p = INET_command_line + strlen (INET_command_line);
-    }
-
-DuplicateHandle (GetCurrentProcess(), (HANDLE) old_handle,
+  }
+	
+  DuplicateHandle (GetCurrentProcess(), (HANDLE) old_handle,
     GetCurrentProcess(), &new_handle, 0, TRUE, DUPLICATE_SAME_ACCESS);
+	
+  sprintf (INET_p, " -s -i -h %d", (SLONG) new_handle);
+	
+  start_crud.cb = sizeof (STARTUPINFO);
+  start_crud.lpReserved = NULL;
+  start_crud.lpReserved2 = NULL;
+  start_crud.cbReserved2 = 0;
+  start_crud.lpDesktop = NULL;
+  start_crud.lpTitle = NULL;
+  start_crud.dwFlags = 0;
+	
+  if (ret = CreateProcess (NULL,
+    INET_command_line,
+    NULL,
+    NULL,
+    TRUE,
+    (flag & SRVR_high_priority ?
+      HIGH_PRIORITY_CLASS   | DETACHED_PROCESS :
+      NORMAL_PRIORITY_CLASS | DETACHED_PROCESS),
+    NULL,
+    NULL,
+    &start_crud,
+    &pi))
+  {
+    CloseHandle (pi.hThread);
+    CloseHandle (pi.hProcess);
+  }
+	
+  CloseHandle (new_handle);
 
-sprintf (INET_p, " -s -i -h %d", (SLONG) new_handle);
-start_crud.cb = sizeof (STARTUPINFO);
-start_crud.lpReserved = NULL;
-start_crud.lpReserved2 = NULL;
-start_crud.cbReserved2 = 0;
-start_crud.lpDesktop = NULL;
-start_crud.lpTitle = NULL;
-start_crud.dwFlags = 0;
-if (ret = CreateProcess (NULL,
-	INET_command_line,
-	NULL,
-	NULL,
-	TRUE,
-	(flag & SRVR_high_priority ?
-	HIGH_PRIORITY_CLASS   | DETACHED_PROCESS :
-	NORMAL_PRIORITY_CLASS | DETACHED_PROCESS),
-	NULL,
-	NULL,
-	&start_crud,
-	&pi))
-	{
-	CloseHandle (pi.hThread);
-	CloseHandle (pi.hProcess);
-	}
-CloseHandle (new_handle);
-
-return 1;
+  return 1;
 }
 #endif
 
