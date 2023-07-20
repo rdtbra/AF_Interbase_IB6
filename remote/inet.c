@@ -375,8 +375,7 @@ static void	exit_handler 	(void *);
 static int	fork 		(void);
 #endif
 #ifdef WIN_NT
-static int	fork 		(SOCKET, 
-					USHORT);
+static int fork(SOCKET, USHORT);
 #endif
 static void	inet_copy 	(SCHAR *, 
 					SCHAR *, 
