@@ -1043,7 +1043,7 @@ static void stall (
 
       /* RDT: 20230620 - Aguardar até o momento em que esta thread se torne a thread ativa. 
          Isto deve ocorrer por alguma outra thread executando a função SCH_enter + schedule, 
-	 que vimos que percorrerá a lista circular de threads, tornando alguma ativa. Quando 
+         que vimos que percorrerá a lista circular de threads, tornando alguma ativa. Quando 
          esta thread for a ativa, saímos do loop. */
       if (thread == active_thread && !(thread->thread_flags & THREAD_hiber) &&
          (!ast_thread || !(ast_thread->thread_flags & THREAD_ast_active)))
