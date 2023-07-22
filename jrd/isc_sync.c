@@ -2238,12 +2238,13 @@ int DLL_EXPORT ISC_event_post (
 }
 
 int DLL_EXPORT ISC_event_wait (
-    SSHORT	count,
-    EVENT	*events,
-    SLONG	*values,
-    SLONG	micro_seconds,
-    void	(*timeout_handler)(),
-    void	*handler_arg)
+  SSHORT count,
+  EVENT *events,
+  SLONG *values,
+  SLONG micro_seconds,
+  void (*timeout_handler)(),
+  void *handler_arg)
+/* RDT: 20230722 - A thread vai esperar por um evento. */
 {
 /**************************************
  *
@@ -2255,32 +2256,33 @@ int DLL_EXPORT ISC_event_wait (
  *	Wait on an event.
  *
  **************************************/
-EVENT	*ptr, *end;
-HANDLE	handles [16], *handle_ptr;
-SLONG	timeout, status;
+  EVENT *ptr, *end;
+  HANDLE handles [16], *handle_ptr;
+  SLONG timeout, status;
 
-/* If we're not blocked, the rest is a gross waste of time */
-
-if (!ISC_event_blocked (count, events, values))
+  /* If we're not blocked, the rest is a gross waste of time */
+  if (!ISC_event_blocked (count, events, values))
     return 0;
 
-for (ptr = events, end = events + count, handle_ptr = handles; ptr < end;)
+  for (ptr = events, end = events + count, handle_ptr = handles; ptr < end;)
     *handle_ptr++ = (*ptr++)->event_handle;
 
-/* Go into wait loop */
-
-if (micro_seconds > 0)
+  /* Go into wait loop */
+  if (micro_seconds > 0)
     timeout = micro_seconds / 1000;
-else
+  else
     timeout = INFINITE;
-for (;;)
-    {
+
+  for (;;)
+  {
     if (!ISC_event_blocked (count, events, values))
-	return 0;
+      return 0;
+	  
     status = WaitForMultipleObjects ((SLONG) count, handles, TRUE, timeout);
+	  
     if (!((status >= WAIT_OBJECT_0) && (status < WAIT_OBJECT_0 + count)))
-	return status;
-    }
+      return status;
+  }
 }
 #endif
 
