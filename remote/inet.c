@@ -1413,7 +1413,8 @@ PORT DLL_EXPORT INET_connect (
       port->port_server_flags |= SRVR_server;
       return port;
     }
-
+    /* RDT: 20230722 - Neste ponto, com a chamada a THREAD_ENTER = SCH_enter, entendo que, o servidor, no Windows irá
+       permitir execução de outras atividades. Isto, efetivamente é diferente do Unix/Linux, como já comentamos. */
     THREAD_ENTER;
     SOCLOSE (s);
   }
