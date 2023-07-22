@@ -1394,13 +1394,13 @@ PORT DLL_EXPORT INET_connect (
       disconnect (port);
       return NULL;
     }
-/* RDT: 20230722 - Até este ponto, o código estava fluindo bem. Eu realmente pensava em encontrar um 
-   loop que iniciasse o processamento de chamadas de clients no ambiente. Apenas não esperava que este
-    ponto fosse aqui. Mas é o que parece, pois observando a estratégia agora, veremos que fork sempre
-    retornará true, portanto !fork sempre será falso (para o caso WIN_NT. Dessa forma, não retornaremos
-    port para o ponto de chamada, da forma como entendo até o momento. 
-    Isso me dá a entender que, THREAD_ENTER é a válvula de escape para que outros pontos do servidor
-    possam executar. */	  
+    /* RDT: 20230722 - Até este ponto, o código estava fluindo bem. Eu realmente pensava em encontrar um 
+       loop que iniciasse o processamento de chamadas de clients no ambiente. Apenas não esperava que este
+       ponto fosse aqui. Mas é o que parece, pois observando a estratégia agora, veremos que fork sempre
+       retornará true, portanto !fork sempre será falso (para o caso WIN_NT. Dessa forma, não retornaremos
+       port para o ponto de chamada, da forma como entendo até o momento. 
+       Isso me dá a entender que, THREAD_ENTER é a válvula de escape para que outros pontos do servidor
+       possam executar. */	  
 #ifdef WIN_NT
     if ((flag & SRVR_debug) || !fork (s, flag))
 #else
