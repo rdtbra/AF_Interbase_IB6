@@ -2062,9 +2062,10 @@ return 0;
 #ifdef WIN_NT
 #define EVENTS
 int ISC_event_blocked (
-    USHORT	count,
-    EVENT	*events,
-    SLONG	*values)
+  USHORT count,
+  EVENT	*events,
+  SLONG	*values)
+/* RDT: 20230722 - Se a espera vai ser bloqueada, retornar TRUE :). */
 {
 /**************************************
  *
@@ -2077,19 +2078,19 @@ int ISC_event_blocked (
  *
  **************************************/
 
-for (; count > 0; --count, ++events, ++values)
+  for (; count > 0; --count, ++events, ++values)
     if (!(*events)->event_shared)
-	{
-	if ((*events)->event_count >= *values)
-	    return FALSE;
-	}
+    {
+      if ((*events)->event_count >= *values)
+        return FALSE;
+    }
     else
-	{
-	if ((*events)->event_shared->event_count >= *values)
-	    return FALSE;
-	}
+    {
+      if ((*events)->event_shared->event_count >= *values)
+        return FALSE;
+    }
 
-return TRUE;
+  return TRUE;
 }
 
 SLONG DLL_EXPORT ISC_event_clear (
