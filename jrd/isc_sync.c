@@ -2277,7 +2277,8 @@ int DLL_EXPORT ISC_event_wait (
   {
     if (!ISC_event_blocked (count, events, values))
       return 0;
-	  
+
+    /* RDT: 20230722 - Esperar os objetos, que poderão liberar a execução da thread. */
     status = WaitForMultipleObjects ((SLONG) count, handles, TRUE, timeout);
 	  
     if (!((status >= WAIT_OBJECT_0) && (status < WAIT_OBJECT_0 + count)))
