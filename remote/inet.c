@@ -1073,20 +1073,20 @@ PORT DLL_EXPORT INET_connect (
  *	is for a server process.
  *
  **************************************/
-  int			l, n;
-  SOCKET 		s;
-  PORT			port;
-  TEXT			*protocol, temp [128], *p;
-  struct sockaddr_in	address;
+  int l, n;
+  SOCKET s;
+  PORT port;
+  TEXT *protocol, temp [128], *p;
+  struct sockaddr_in address;
 #ifndef VMS
-  struct hostent	*host;
-  struct servent	*service;
-  TEXT			msg [64];
+  struct hostent *host;
+  struct servent *service;
+  TEXT msg [64];
 #endif
 #ifdef DGUX
-  SCHAR			optval;
+  SCHAR optval;
 #else
-  int			optval;
+  int optval;
 #endif
  
 #ifdef DEBUG
@@ -1102,6 +1102,7 @@ PORT DLL_EXPORT INET_connect (
       INET_force_error = atoi (p);
   }
 #endif
+  /* RDT: 20220724 - Alocar uma porta. */	
   port = alloc_port (NULL_PTR);
   port->port_status_vector = status_vector;
   REMOTE_get_timeout_params (port, dpb, dpb_length);
