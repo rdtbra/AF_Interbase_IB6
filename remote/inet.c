@@ -1102,7 +1102,7 @@ PORT DLL_EXPORT INET_connect (
       INET_force_error = atoi (p);
   }
 #endif
-  /* RDT: 20220724 - Alocar uma porta. */	
+  /* RDT: 20230724 - Alocar uma porta. */	
   port = alloc_port (NULL_PTR);
   port->port_status_vector = status_vector;
   REMOTE_get_timeout_params (port, dpb, dpb_length);
