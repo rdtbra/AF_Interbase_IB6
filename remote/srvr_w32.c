@@ -321,6 +321,10 @@ static void THREAD_ROUTINE inet_connect_wait_thread (
     NULL_PTR, 0); /* RDT: 20230713 - INET_connect -> https://github.com/rdtbra/IB6/blob/main/remote/inet.c#L1056 */
   THREAD_EXIT;
 
+  /* RDT: 20230726 - Ficou compreendido agora que INET_connect vai retornar para este ponto, porque não entraremos no loop
+     while interno dela, que executa o fork (que entendo seria a implementação do servidor CLASSIC. Quando
+     INET_connect retorna, temos o valor de uma porta (port) completamente preparado e assim, 
+     SRVR_multi_thread realmente é chamada. */
   if (port)
     /* RDT: 20230715 - Já devia ter documentado esta porção aqui. SRVR_multi_thread está aqui: https://github.com/rdtbra/IB6/blob/main/remote/server.c#L221 */
     SRVR_multi_thread (port, server_flag);
