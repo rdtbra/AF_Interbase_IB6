@@ -1371,6 +1371,16 @@ PORT DLL_EXPORT INET_connect (
     return NULL;
   }
 
+  /* RDT: 20230726 - Depois de perder uma grande quantidade de tempo avaliando o loop while abaixo, 
+     e também lendo alguma documentação associada ao interbase superserver x clássico, entendi que
+     o código associado ao ambiente multithreaded provavelmente terá SRVR_multi_client definido. 
+     O código do loop while, através do fork estava criando novos processos no Windows, não
+     "novas threads", então observando melhor, entendo que o código passará a 
+     executar por este if, que aí sim, retornará uma "porta" ao ponto de chamada. 
+     OBS: Está claro que preciso me familiarizar melhor com este código, visto que mais acima
+     alguma outra condição pode me contradizer. 
+     Porém, assumindo que meu ponto de vista está correto agora, volto ao ponto onde INET_connect
+     havia sido chamada inicialmente. */
   if (flag & SRVR_multi_client)
   {
     /* Prevent the generation of dummy keepalive packets on the
