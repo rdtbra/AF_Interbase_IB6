@@ -345,6 +345,8 @@ void SRVR_multi_thread (
   }
 
   /* When this loop exits, the server will no longer receive requests */
+  /* RDT: 20230726 - Agora minha visão está um pouco mais voltada a este loop, que é o verdadeiro 
+     loop do Superserver, e seu mecanismo de trabalho aqui. */
   while (TRUE)
   {
     port = NULL;
@@ -492,7 +494,10 @@ void SRVR_multi_thread (
       {
         gds__thread_start ((FPTR_INT) thread, (void*) flags, THREAD_medium, THREAD_ast, NULL_PTR);
       }
-
+      /* RDT: 20230726 - Estamos chamando ISC_event_post, que por sua vez, chama internamente SetEvent. Essa função
+         será responsável por fazer com que o esquema de threads avance no ambiente. SetEvent sinaliza o evento, o que
+	 ocasionará liberação de eventuais threads que esperam por ele. Assim, o ambiente combina uma estratégia de 
+         controle de threads própria, com threads do sistema operacional, implementando um mini scheduler. */
       ISC_event_post (thread_event);
     }
     finished:
