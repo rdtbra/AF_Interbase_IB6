@@ -496,7 +496,7 @@ void SRVR_multi_thread (
       }
       /* RDT: 20230726 - Estamos chamando ISC_event_post, que por sua vez, chama internamente SetEvent. Essa função
          será responsável por fazer com que o esquema de threads avance no ambiente. SetEvent sinaliza o evento, o que
-	 ocasionará liberação de eventuais threads que esperam por ele. Assim, o ambiente combina uma estratégia de 
+         ocasionará liberação de eventuais threads que esperam por ele. Assim, o ambiente combina uma estratégia de 
          controle de threads própria, com threads do sistema operacional, implementando um mini scheduler. */
       ISC_event_post (thread_event);
     }
