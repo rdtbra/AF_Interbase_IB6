@@ -385,7 +385,7 @@ void SRVR_multi_thread (
     }
 #endif /* DEBUG */
 #endif /* DEV_BUILD */
-
+    /* RDT: 20230726 - Quando chegarmos neste ponto, request não será null, */
     if (request)
     {
       request->req_next = NULL;
